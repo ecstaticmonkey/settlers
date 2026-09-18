@@ -1,0 +1,36 @@
+'use client';
+import { useEffect, useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { ArrowUpRight, ArrowRight, Plus, Users, Bot, Compass, BookOpen, RefreshCw, Play, ChevronRight } from 'lucide-react';
+import { Room, roomService } from '@/lib/multiplayer/room-service';
+import { generateCatanBoard } from '@/lib/catan/board';
+import { Brand } from '../UI/Brand';
+import { Dialog } from '../UI/Dialog';
+import { ResourceIcon, RESOURCE_NAMES } from '../UI/ResourceIcon';
+const IslandCanvas = dynamic(() => import('../Board/IslandCanvas'), { ssr: false, loading: () => <div className="island-loading"><span/>Discovering the island…</div> });
+interface Props { currentUser: { id: string; name: string }; onOpenAuth: () => void; onOpenCreateRoom: () => void; onJoinRoom: (code: string) => Promise<void>; onQuickPlayBots: () => Promise<void>; }
+export function LobbyView({currentUser,onOpenAuth,onOpenCreateRoom,onJoinRoom,onQuickPlayBots}:Props) {
+ const board=useMemo(()=>generateCatanBoard(false),[]);
+ const [rooms,setRooms]=useState<Room[]>([]),[joinCode,setJoinCode]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[help,setHelp]=useState(false);
+ const refresh=async()=>{try{setRooms(await roomService.getRooms());}catch{setError('Could not load your tables. Please try again.');}};
+ useEffect(()=>{let active=true;const fetchRooms=async()=>{const list=await roomService.getRooms();if(active)setRooms(list);};void fetchRooms();const id=setInterval(()=>void fetchRooms(),3000);return()=>{active=false;clearInterval(id);};},[]);
+ const run=async(action:()=>Promise<void>)=>{setBusy(true);setError('');try{await action();}catch(e){setError(e instanceof Error?e.message:'Something went wrong. Please try again.');}finally{setBusy(false);}};
+ return <div className="lobby-shell">
+  <header className="site-header"><Brand/><nav aria-label="Main navigation"><span className="nav-active">Play</span><button onClick={()=>setHelp(true)}>How to play <ArrowUpRight size={13}/></button></nav><button className="profile-button" onClick={onOpenAuth}><span className="avatar">{currentUser.name[0]}</span><span>{currentUser.name}</span><ChevronRight size={14}/></button></header>
+  <main>
+   <section className="lobby-hero">
+    <div className="hero-copy"><span className="eyebrow"><span className="live-dot"/> YOUR NEXT GREAT ADVENTURE</span><h1>A little island.<br/>Endless <em>possibility.</em></h1><p>Gather resources. Make your move. Build something worth competing for.</p><button className="button button-primary hero-play" disabled={busy} onClick={()=>void run(onQuickPlayBots)}><Play size={17} fill="currentColor"/>{busy?'Preparing your island…':'Let’s play'}<ArrowRight size={19}/></button><div className="hero-meta"><span><Bot size={14}/> You + 3 bots</span><i/>No account needed</div></div>
+    <div className="hero-island"><div className="island-sun"/><span className="island-coordinate">THE CATAN ARCHIPELAGO<br/><b>01 / THE MAIN ISLAND</b></span><IslandCanvas board={board} preview/><div className="island-caption"><span className="caption-line"/><span>A world of your own.<br/><b>One settlement at a time.</b></span></div></div>
+    <div className="hero-bottom"><span><Compass size={16}/> EXPLORE. TRADE. BUILD.</span><span>19 hexes. Five resources. Your strategy.</span><span className="edition-tag">THE ISLAND EDITION ↗</span></div>
+   </section>
+   <section className="play-options" aria-label="Ways to play"><button className="play-option" onClick={()=>void run(onQuickPlayBots)} disabled={busy}><span className="option-icon"><Bot/></span><span><small>JUMP RIGHT IN</small><strong>A table just for you</strong><p>Find your footing against three bot opponents.</p></span><ArrowUpRight size={21}/></button><button className="play-option" onClick={onOpenCreateRoom}><span className="option-icon"><Users/></span><span><small>MAKE IT YOURS</small><strong>Set up a table</strong><p>Choose your color, seats, and bot companions.</p></span><Plus size={21}/></button><form className="join-option" onSubmit={e=>{e.preventDefault();if(joinCode.trim())void run(()=>onJoinRoom(joinCode.trim().toUpperCase()));}}><small>ALREADY HAVE A TABLE?</small><label htmlFor="room-code">Find it with a code</label><div><input id="room-code" value={joinCode} maxLength={8} onChange={e=>setJoinCode(e.target.value)} placeholder="ROOM CODE" autoComplete="off"/><button type="submit" aria-label="Join table" disabled={busy||!joinCode.trim()}><ArrowRight size={20}/></button></div></form></section>
+   {error&&<p className="notice notice-error" role="alert">{error}</p>}
+   <section className="tables-section"><div className="section-heading"><div><span className="eyebrow">PULL UP A CHAIR</span><h2>Your tables <span>{rooms.length}</span></h2></div><button className="text-button" onClick={()=>void refresh()}><RefreshCw size={14}/> Refresh</button></div>
+    {rooms.length===0?<div className="empty-tables"><span className="empty-icon"><Compass size={28} strokeWidth={1.3}/></span><div><h3>A fresh map. A new beginning.</h3><p>Your tables will appear here. Start a solo adventure or create your own.</p></div><button className="text-button" onClick={onOpenCreateRoom}>Create a table <ArrowUpRight size={16}/></button></div>:<div className="table-list">{rooms.map(room=><div className="table-row" key={room.id}><span className="table-symbol"><Users size={19}/></span><div><h3>{room.name}</h3><p>{room.players.length} / {room.maxPlayers} settlers · {room.code}</p></div><span className="table-status">{room.status==='waiting'?'Gathering settlers':'In progress'}</span><button className="button button-small" disabled={busy || (room.status!=='waiting'&&!room.players.some(p=>p.id===currentUser.id))} onClick={()=>void run(()=>onJoinRoom(room.code))}>{room.status==='waiting'?'Join table':'Continue'}<ArrowRight size={15}/></button></div>)}</div>}
+    <p className="local-note"><span className="live-dot"/> Local play · Tables are saved in this browser. Online multiplayer is coming later.</p>
+   </section>
+  </main>
+  <footer className="site-footer"><Brand compact/><span>Good things start with a little settlement.</span><button onClick={()=>setHelp(true)}>Game guide <BookOpen size={14}/></button></footer>
+  {help&&<Dialog title="Your first settlement" subtitle="A quick guide to life on the island." onClose={()=>setHelp(false)}><div className="guide-steps"><p><b>01 · Find your home.</b> Place two settlements and connecting roads. Look for a mix of resources and numbers with more dots: they roll more often.</p><p><b>02 · Gather & trade.</b> Roll the dice to collect resources from adjacent tiles. Exchange surplus resources at the bank; harbors improve your rate.</p><div className="guide-resources">{RESOURCE_NAMES.map(r=><span key={r} className={`resource-${r}`}><ResourceIcon resource={r}/>{r}</span>)}</div><p><b>03 · Grow your island.</b> Build roads, expand with settlements, and upgrade to cities. Development cards can change your fortunes.</p><p><b>04 · Reach ten points.</b> Settlements are worth 1, cities 2. Longest Road, Largest Army, and victory-point cards help you get there.</p></div><button className="button button-primary full-width" onClick={()=>setHelp(false)}>Ready to explore <ArrowRight size={17}/></button></Dialog>}
+ </div>;
+}
