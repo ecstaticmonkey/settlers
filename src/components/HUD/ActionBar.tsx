@@ -3,7 +3,7 @@
 import React from 'react';
 import { GamePhase, Player } from '@/lib/catan/types';
 import { canAfford, BUILDING_COSTS } from '@/lib/catan/engine';
-import { Dices, Home, Castle, Route, Layers, ArrowLeftRight, ArrowRight, Hourglass } from 'lucide-react';
+import { Dices, Home, Castle, Route, Layers, ArrowLeftRight, ArrowRight, Hourglass, MapPin } from 'lucide-react';
 import { PIECE_COLORS } from '../Board/island-scene';
 
 interface Props {
@@ -59,30 +59,27 @@ export function ActionBar({
     turnStatus = !isMyTurn ? `${activeName} is Rolling Dice` : 'Roll the Dice';
   } else if (phase === 'TURN_ROBBER_MOVE') {
     turnStatus = !isMyTurn ? `${activeName} is Moving Robber` : 'Move the Robber';
-  } else if (phase === 'TURN_ROBBER_DISCARD') {
-    turnStatus = 'Discard Half Cards';
   } else if (phase === 'TURN_ROBBER_STEAL') {
     turnStatus = !isMyTurn ? `${activeName} is Stealing` : 'Choose Player to Steal';
+  } else if (phase === 'TURN_ROBBER_DISCARD') {
+    turnStatus = 'Discarding Half Cards';
   } else if (phase === 'TURN_ACTIONS') {
-    turnStatus = !isMyTurn
-      ? `${activeName}'s Turn`
-      : buildMode
-      ? `Placing ${buildMode}`
-      : 'Your Turn';
+    turnStatus = !isMyTurn ? `${activeName} is Trading & Building` : 'Trade & Build';
   } else if (phase === 'GAME_OVER') {
     turnStatus = 'Game Over';
+  } else {
+    turnStatus = `${activeName}'s Move`;
   }
 
   // Timer format (mm:ss)
   const formatTimer = (secs: number) => {
-    const s = Math.max(0, Math.floor(secs));
-    const mins = Math.floor(s / 60);
-    const remainder = s % 60;
-    return `${String(mins).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (
-    <div className="bottom-action-dock" role="toolbar" aria-label="Game actions toolbar">
+    <div className="bottom-action-dock" role="region" aria-label="Game controls and turn status">
       {/* Turn Pill & Timer (Mirrored from Photo) */}
       <div className={`turn-pill ${isMyTurn ? 'turn-pill-active' : ''}`}>
         <div
@@ -90,7 +87,7 @@ export function ActionBar({
           style={{ backgroundColor: PIECE_COLORS[activePlayer.color] }}
           aria-hidden="true"
         >
-          {phase === 'TURN_ROLL' ? <Dices size={15} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
+          {phase === 'TURN_ROLL' ? <Dices size={18} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
         </div>
         <div className="turn-pill-info">
           <span className="turn-pill-title">{turnStatus}</span>
@@ -114,7 +111,7 @@ export function ActionBar({
           title="Trade with players"
           aria-label="Trade with players"
         >
-          <ArrowLeftRight size={18} />
+          <ArrowLeftRight size={22} />
           <span className="hud-action-label">Trade</span>
         </button>
 
@@ -127,7 +124,7 @@ export function ActionBar({
           title="Development cards (Play or Buy)"
           aria-label="Development cards"
         >
-          <Layers size={18} />
+          <Layers size={22} />
           <span className="hud-action-label">Cards</span>
         </button>
 
@@ -148,7 +145,7 @@ export function ActionBar({
               aria-label={`Build road (${supply} left)`}
             >
               <span className="hud-badge">{freeRoadsRemaining > 0 ? `${freeRoadsRemaining}*` : supply}</span>
-              <Route size={18} />
+              <Route size={22} />
               <span className="hud-action-label">Road</span>
             </button>
           );
@@ -169,7 +166,7 @@ export function ActionBar({
               aria-label={`Build settlement (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Home size={18} />
+              <Home size={22} />
               <span className="hud-action-label">Settle</span>
             </button>
           );
@@ -190,13 +187,13 @@ export function ActionBar({
               aria-label={`Build city (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Castle size={18} />
+              <Castle size={22} />
               <span className="hud-action-label">City</span>
             </button>
           );
         })()}
 
-        {/* Primary Action Button (Roll / End Turn / Waiting Hourglass) */}
+        {/* Primary Action Button (Roll / End Turn / Waiting Hourglass / Place) */}
         {phase === 'TURN_ROLL' && isMyTurn ? (
           <button
             type="button"
@@ -206,7 +203,7 @@ export function ActionBar({
             title="Roll the dice"
             aria-label="Roll dice"
           >
-            <Dices size={18} className={rolling ? 'animate-spin' : ''} />
+            <Dices size={22} className={rolling ? 'animate-spin' : ''} />
             <span className="hud-action-label">{rolling ? 'Rolling…' : 'Roll'}</span>
           </button>
         ) : actions ? (
@@ -220,8 +217,18 @@ export function ActionBar({
             title="End your turn"
             aria-label="End turn"
           >
-            <ArrowRight size={18} />
+            <ArrowRight size={22} />
             <span className="hud-action-label">Pass</span>
+          </button>
+        ) : setup && isMyTurn ? (
+          <button
+            type="button"
+            className="hud-action-btn hud-primary-action"
+            title={`Click on a glowing spot on the island to place your ${setupRoad ? 'road' : 'settlement'}`}
+            aria-label="Place on board"
+          >
+            <MapPin size={22} className="animate-bounce" />
+            <span className="hud-action-label">Place</span>
           </button>
         ) : (
           <button
@@ -231,7 +238,7 @@ export function ActionBar({
             title={rolling ? 'Rolling the dice…' : setup ? 'Setup in progress' : 'Waiting for player'}
             aria-label="Waiting"
           >
-            <Hourglass size={18} className={isMyTurn ? 'animate-pulse' : ''} />
+            <Hourglass size={20} className={isMyTurn ? 'animate-pulse' : ''} />
             <span className="hud-action-label">Wait</span>
           </button>
         )}

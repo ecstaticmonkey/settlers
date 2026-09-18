@@ -54,11 +54,11 @@ export const GameView: React.FC<GameViewProps> = ({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Turn timer countdown
-  const [remainingSeconds, setRemainingSeconds] = useState(gameState.turnTimeRemainingSeconds || 30);
+  const [remainingSeconds, setRemainingSeconds] = useState(gameState.turnTimeRemainingSeconds || 60);
 
   useEffect(() => {
-    setRemainingSeconds(gameState.turnTimeRemainingSeconds || 30);
-  }, [gameState.turnTimeRemainingSeconds, gameState.turnNumber, gameState.phase]);
+    setRemainingSeconds(gameState.turnTimeRemainingSeconds || 60);
+  }, [gameState.turnTimeRemainingSeconds, gameState.turnNumber, gameState.phase, gameState.activePlayerIndex]);
 
   useEffect(() => {
     const timer = setInterval(() => {

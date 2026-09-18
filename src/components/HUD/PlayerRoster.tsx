@@ -79,7 +79,7 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-resources"
                   title={`${totalResources} resource cards in hand`}
                 >
-                  <span className="roster-badge-icon">🎴</span>
+                  <span className="roster-badge-icon" style={{ fontWeight: 800, fontSize: '11px' }}>?</span>
                   <span className="roster-badge-val">{totalResources}</span>
                 </div>
 
@@ -88,7 +88,7 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-dev"
                   title={`${totalDevCards} development cards held`}
                 >
-                  <Layers size={11} className="roster-badge-icon" />
+                  <Layers size={13} className="roster-badge-icon" />
                   <span className="roster-badge-val">{totalDevCards}</span>
                 </div>
 
@@ -97,7 +97,7 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-settlements"
                   title={`${p.settlementsLeft} settlements remaining in stock`}
                 >
-                  <Home size={11} className="roster-badge-icon" />
+                  <Home size={13} className="roster-badge-icon" />
                   <span className="roster-badge-val">{p.settlementsLeft}</span>
                 </div>
 
@@ -106,7 +106,7 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-roads"
                   title={`${p.roadsLeft} roads remaining in stock`}
                 >
-                  <Route size={11} className="roster-badge-icon" />
+                  <Route size={13} className="roster-badge-icon" />
                   <span className="roster-badge-val">{p.roadsLeft}</span>
                 </div>
               </div>
