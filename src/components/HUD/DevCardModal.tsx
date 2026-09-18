@@ -8,6 +8,7 @@ import { X, Shield, Route, Gift, Coins, Crown } from 'lucide-react';
 interface DevCardModalProps {
   isOpen: boolean;
   onClose: () => void;
+  canPlay?: boolean;
   player: Player;
   onPlayCard: (
     card: DevCardType,
@@ -36,6 +37,7 @@ const CARD_DESCRIPTIONS: Record<DevCardType, string> = {
 export const DevCardModal: React.FC<DevCardModalProps> = ({
   isOpen,
   onClose,
+  canPlay = true,
   player,
   onPlayCard,
 }) => {

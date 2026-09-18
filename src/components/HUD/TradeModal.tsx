@@ -7,6 +7,7 @@ import { Plus, Minus, ArrowRight, X, Check, ArrowLeftRight } from 'lucide-react'
 interface TradeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  canOffer?: boolean;
   currentPlayer: Player;
   players: Player[];
   activeOffer: TradeOffer | null;
@@ -21,6 +22,7 @@ const RESOURCES: Resource[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
 export const TradeModal: React.FC<TradeModalProps> = ({
   isOpen,
   onClose,
+  canOffer = true,
   currentPlayer,
   players,
   activeOffer,
