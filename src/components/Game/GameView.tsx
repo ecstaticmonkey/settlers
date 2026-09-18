@@ -339,7 +339,6 @@ export const GameView: React.FC<GameViewProps> = ({
       <TradeModal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        canOffer={isMyTurn && gameState.phase === 'TURN_ACTIONS'}
         currentPlayer={me}
         players={gameState.players}
         activeOffer={gameState.activeTradeOffer}
@@ -361,7 +360,6 @@ export const GameView: React.FC<GameViewProps> = ({
       <DevCardModal
         isOpen={isDevCardModalOpen}
         onClose={() => setIsDevCardModalOpen(false)}
-        canPlay={isMyTurn && gameState.phase === 'TURN_ACTIONS' && !gameState.devCardPlayedThisTurn}
         player={me}
         onPlayCard={(card, params) => handleDispatch({ type: 'PLAY_DEV_CARD', card, params })}
       />
