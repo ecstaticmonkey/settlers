@@ -49,6 +49,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
   if (!isOpen) return null;
 
   const handlePlay = (card: DevCardType) => {
+    if (!canPlay) return;
     if (card === 'year_of_plenty') {
       onPlayCard('year_of_plenty', { targetResource: yop1, targetResource2: yop2 });
     } else if (card === 'monopoly') {
@@ -80,7 +81,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
           {cardTypes.map((type) => {
             const count = player.devCards[type] || 0;
             const isVP = type === 'victory_point';
-            const isPlayable = count > 0 && !isVP;
+            const isPlayable = canPlay && count > 0 && !isVP;
 
             return (
               <div

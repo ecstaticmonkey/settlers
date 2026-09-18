@@ -36,6 +36,17 @@ body {
 .camera-controls { background: #142c43ed; border-color: #82bbcf40; box-shadow: 0 4px 12px #030c1a40; }
 .camera-controls button:hover { background: #2a4e64; }
 .camera-controls>span { background: #8cbedb33; }
+.board-size-actions { background: #142c43d9; border-color: #82bbcf40; box-shadow: 0 3px 12px #030c1a40; }
+.board-control-btn { color: #b4e5dd; }
+.board-control-btn:hover { background: #26475d; color: #fff9ec; }
+.board-control-btn.active { background: #eb6138; color: #fff9ec; }
+.board-resize-handle:hover, .is-resizing .board-resize-handle { background: #6bbad344; }
+.board-resize-grip { color: #80d8ba; }
+.board-restore-pill { background: #142c43f2; border-color: #76ccb666; color: #f5ead6; box-shadow: 0 4px 14px #02081366; }
+.board-restore-pill:hover { background: #eb6138; }
+.theater-active .turn-banner { background: #152c45e6; border-color: #7197b755; box-shadow: 0 8px 28px #02081366; }
+.theater-active .resource-hand { background: #142a42e6; border-color: #8aacce44; box-shadow: 0 8px 28px #02081366; }
+.theater-active .action-bar { background: #17324ee8; border-color: #76ccb640; box-shadow: 0 8px 32px #02081388; }
 .number-marker { background: #fff1cf; border-color: #ffe9b8; color: #303c2b; box-shadow: 0 3px 0 #8d7647,0 4px 8px #05122166; }
 .number-hot { background: #ffe4a2; color: #c63c20; border-color: #fbc674; }
 .port-label { background: #fff0d4ed; border-color: #e6cc92; color: #254c51; }
@@ -107,3 +118,183 @@ body {
 .notice-error { background: #552f33; border-color: #b76559; color: #ffcebc; }
 @media(max-width:850px) { .player-score { background: #152d43; } }
 @media(max-width:560px) { .player-score { background: transparent; } }
+
+/* Night mode overrides for mirrored HUD elements */
+.catan-board-viewport {
+  background: radial-gradient(ellipse at 53% 44%, #24566b 0%, #16364e 45%, #0d2137 80%, #09172a 100%);
+}
+
+.hud-tool-btn {
+  background: #14283f;
+  border-color: rgba(179, 208, 237, 0.2);
+  color: #b4e5dd;
+}
+.hud-tool-btn:hover {
+  background: #1f3c5e;
+  color: #fff;
+}
+
+.hud-ribbon-banner {
+  background: #19314d;
+  color: #ffe8b3;
+  border-color: rgba(243, 202, 118, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+.hud-ribbon-banner::before,
+.hud-ribbon-banner::after {
+  background: #102338;
+}
+
+.game-chat-panel,
+.bank-deck-bar,
+.roster-player-card,
+.resource-hand-tray,
+.turn-pill,
+.action-buttons-group {
+  background: #14283f;
+  border-color: rgba(179, 208, 237, 0.2);
+  box-shadow: 0 4px 18px rgba(2, 8, 19, 0.4);
+}
+
+.chat-welcome-banner {
+  border-color: rgba(179, 208, 237, 0.15);
+  color: #9eb4c9;
+}
+.chat-rulebook-link {
+  color: #7cdbc5;
+}
+.chat-entry {
+  color: #f2ede1;
+}
+.chat-entry-icon {
+  color: #72cfb3;
+}
+.chat-toggle-bar {
+  background: #0e1d2f;
+  border-color: rgba(179, 208, 237, 0.15);
+  color: #9eb4c9;
+}
+.chat-toggle-bar:hover {
+  background: #172d47;
+  color: #fff;
+}
+
+.bank-deck-trigger {
+  background: #1b3654;
+  border-color: rgba(179, 208, 237, 0.2);
+  color: #7cdbc5;
+}
+.bank-deck-trigger:hover:not(:disabled) {
+  background: #254b73;
+  color: #ffac7b;
+}
+
+.roster-player-active {
+  background: #1d3a51;
+  border-color: var(--player-accent);
+}
+.roster-vp-ribbon {
+  background: #1b3654;
+  border-color: rgba(243, 202, 118, 0.4);
+  color: #f3ca76;
+}
+.roster-player-name {
+  color: #f2ede1;
+}
+.roster-you-badge {
+  background: rgba(124, 219, 197, 0.15);
+  color: #7cdbc5;
+}
+.roster-stat-badge {
+  background: #1f3c5e;
+  color: #f2ede1;
+}
+.roster-badge-icon {
+  color: #9eb4c9;
+}
+
+.hand-card {
+  border-color: #f1cf8d;
+  box-shadow: 0 3px 0 #897144, 0 6px 14px rgba(1, 9, 23, 0.6);
+}
+.hand-card-label {
+  background: rgba(255, 243, 217, 0.95);
+  color: #243a31;
+}
+.hand-card-count {
+  background: #ffe2a3;
+  color: #102f31;
+  border-color: #0c2135;
+}
+.hand-tray-meta {
+  border-color: rgba(179, 208, 237, 0.2);
+}
+.hand-tray-total {
+  color: #9eb4c9;
+}
+
+.turn-pill-title {
+  color: #f2ede1;
+}
+.turn-pill-phase {
+  color: #9eb4c9;
+}
+.turn-pill-timer {
+  border-color: rgba(179, 208, 237, 0.2);
+  color: #f3ca76;
+}
+
+.hud-action-btn {
+  background: #1b3654;
+  border-color: rgba(179, 208, 237, 0.2);
+  color: #f2ede1;
+}
+.hud-action-btn:hover:not(:disabled) {
+  background: #254b73;
+}
+.hud-badge {
+  color: #9eb4c9;
+}
+.hud-action-separator {
+  background: rgba(179, 208, 237, 0.15);
+}
+.hud-btn-selected {
+  background: #234f59;
+  border-color: #69baa6;
+}
+.hud-primary-action {
+  background: #eb6138;
+  color: #fff9eb;
+  border-color: rgba(255, 174, 112, 0.4);
+  box-shadow: 0 2px 0 #aa371e;
+}
+.hud-primary-action:hover:not(:disabled) {
+  background: #ff7548;
+}
+.hud-waiting-btn {
+  background: #23415a;
+  color: #9eb4c9;
+}
+
+.cost-card,
+.settings-item {
+  background: #19344c;
+  border-color: rgba(179, 208, 237, 0.2);
+}
+.cost-card strong {
+  color: #f2ede1;
+}
+.cost-card span {
+  color: #7cdbc5;
+}
+.cost-card small,
+.settings-item p {
+  color: #9eb4c9;
+}
+
+.building-vp-pill {
+  background: #14283f;
+  color: #76b5ff;
+  border-color: #58a6ff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}

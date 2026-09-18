@@ -53,6 +53,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({
   };
 
   const handleSendOffer = () => {
+    if (!canOffer) return;
     const totalGive = Object.values(give).reduce((s, n) => s + (n || 0), 0);
     const totalWant = Object.values(want).reduce((s, n) => s + (n || 0), 0);
     if (totalGive === 0 || totalWant === 0) return;

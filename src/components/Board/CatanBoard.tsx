@@ -128,7 +128,12 @@ export const CatanBoard: React.FC<CatanBoardProps> = ({
       {hex.numberToken || <span className="desert-mark">✦</span>}<span className="number-pips">{'•'.repeat(hex.pips)}</span>
     </button>)}
     {board.ports.map(port => <span key={`port-${port.id}`} className="port-label" data-world-x={port.pixelX} data-world-z={port.pixelY} data-world-y=".05" title={port.label}>{port.resource ? <ResourceIcon resource={port.resource} size={11}/> : <Anchor size={11}/>} {port.ratio}:1</span>)}
-    {board.vertices.filter(v => validVertexIds.has(v.id) || upgradableCityVertexIds.has(v.id)).map(v => <button key={`vertex-${v.id}`} className={`placement-target ${upgradableCityVertexIds.has(v.id) ? 'city-target' : ''}`} data-world-x={v.pixelX} data-world-z={v.pixelY} data-world-y=".36" aria-label={`${upgradableCityVertexIds.has(v.id) ? 'Upgrade city' : 'Place settlement'} at intersection ${v.id + 1}`} onClick={() => onSelectVertex(v.id)}><span>+</span></button>)}
+    {board.vertices.filter(v => validVertexIds.has(v.id) || upgradableCityVertexIds.has(v.id)).map(v => <button key={`vertex-${v.id}`} className={`placement-target ${upgradableCityVertexIds.has(v.id) ? 'city-target' : ''}`} data-world-x={v.pixelX} data-world-z={v.pixelY} data-world-y=".42" aria-label={`${upgradableCityVertexIds.has(v.id) ? 'Upgrade city' : 'Place settlement'} at intersection ${v.id + 1}`} onClick={() => onSelectVertex(v.id)}><span>+</span></button>)}
     {board.edges.filter(e => validEdgeIds.has(e.id)).map(e => <button key={`edge-${e.id}`} className="placement-target road-target" data-world-x={(e.pixelX1 + e.pixelX2)/2} data-world-z={(e.pixelY1 + e.pixelY2)/2} data-world-y=".36" aria-label={`Place road on path ${e.id + 1}`} onClick={() => onSelectEdge(e.id)}><span>+</span></button>)}
+    {board.vertices.filter(v => v.building).map(v => (
+      <div key={`building-${v.id}`} className="building-marker-wrap" data-world-x={v.pixelX} data-world-z={v.pixelY} data-world-y=".58">
+        {lastPlacedVertexId === v.id && <span className="building-vp-pill">+1 🏆</span>}
+      </div>
+    ))}
   </IslandCanvas>;
 };

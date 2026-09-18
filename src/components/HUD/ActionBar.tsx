@@ -1,13 +1,241 @@
 'use client';
+
+import React from 'react';
 import { GamePhase, Player } from '@/lib/catan/types';
 import { canAfford, BUILDING_COSTS } from '@/lib/catan/engine';
-import { Dices, Home, Castle, Route, Layers, ArrowLeftRight, ArrowRight, X } from 'lucide-react';
-interface Props {phase:GamePhase;player:Player;isMyTurn:boolean;rolling:boolean;buildMode:'road'|'settlement'|'city'|null;onSetBuildMode:(m:'road'|'settlement'|'city'|null)=>void;onRollDice:()=>void;onBuyDevCard:()=>void;onOpenTradeModal:()=>void;onOpenDevCardModal:()=>void;onEndTurn:()=>void;freeRoadsRemaining:number;}
-export function ActionBar(p:Props) {
- const actions=p.phase==='TURN_ACTIONS'&&p.isMyTurn&&!p.rolling;
- const setup=p.phase.startsWith('SETUP');
- const costs={road:'1 wood · 1 brick',settlement:'1 wood · 1 brick · 1 wheat · 1 sheep',city:'2 wheat · 3 ore'};
- return <div className="action-bar"><div className="action-builds">{(['road','settlement','city'] as const).map(type=>{const Icon={road:Route,settlement:Home,city:Castle}[type];const supply={road:p.player.roadsLeft,settlement:p.player.settlementsLeft,city:p.player.citiesLeft}[type];const affordable=type==='road'&&p.freeRoadsRemaining>0||canAfford(p.player,BUILDING_COSTS[type]);return <button key={type} className={`build-button ${p.buildMode===type?'build-selected':''}`} disabled={!actions||!affordable||supply<=0} title={`${costs[type]}${!affordable?' — More resources needed':''}`} onClick={()=>p.onSetBuildMode(p.buildMode===type?null:type)}><Icon size={19}/><span>{type}<small>{type==='road'&&p.freeRoadsRemaining?`${p.freeRoadsRemaining} free`:`${supply} left`}</small></span></button>})}<button className="build-button" disabled={!actions||!canAfford(p.player,BUILDING_COSTS.dev_card)} onClick={p.onBuyDevCard} title="Development card: 1 wheat, 1 sheep, 1 ore"><Layers size={19}/><span>Develop<small>Buy a card</small></span></button></div>
- <div className="action-secondary"><button className="text-button" disabled={p.rolling} onClick={p.onOpenDevCardModal}><Layers size={15}/>My cards</button><button className="text-button" onClick={p.onOpenTradeModal} disabled={setup||p.rolling}><ArrowLeftRight size={15}/>Trade</button>{p.buildMode&&<button className="text-button" onClick={()=>p.onSetBuildMode(null)}><X size={14}/>Cancel</button>}</div>
- <div className="turn-action">{p.phase==='TURN_ROLL'&&p.isMyTurn?<button className="button button-primary" disabled={p.rolling} onClick={p.onRollDice}><Dices size={18}/>{p.rolling?'Rolling…':'Roll dice'}</button>:actions?<button className="button button-primary" onClick={()=>{p.onSetBuildMode(null);p.onEndTurn();}}>End turn<ArrowRight size={18}/></button>:<span className="turn-waiting">{p.rolling?'Rolling the dice…':setup?'Make yourself at home':p.isMyTurn?'Follow the island prompt':'Other settlers are playing'}</span>}</div></div>;
+import { Dices, Home, Castle, Route, Layers, ArrowLeftRight, ArrowRight, Hourglass } from 'lucide-react';
+import { PIECE_COLORS } from '../Board/island-scene';
+
+interface Props {
+  phase: GamePhase;
+  player: Player;
+  activePlayer: Player;
+  isMyTurn: boolean;
+  rolling: boolean;
+  buildMode: 'road' | 'settlement' | 'city' | null;
+  onSetBuildMode: (m: 'road' | 'settlement' | 'city' | null) => void;
+  onRollDice: () => void;
+  onBuyDevCard: () => void;
+  onOpenTradeModal: () => void;
+  onOpenDevCardModal: () => void;
+  onEndTurn: () => void;
+  freeRoadsRemaining: number;
+  turnTimeRemainingSeconds?: number;
+}
+
+export function ActionBar({
+  phase,
+  player,
+  activePlayer,
+  isMyTurn,
+  rolling,
+  buildMode,
+  onSetBuildMode,
+  onRollDice,
+  onOpenTradeModal,
+  onOpenDevCardModal,
+  onEndTurn,
+  freeRoadsRemaining,
+  turnTimeRemainingSeconds = 30,
+}: Props) {
+  const actions = phase === 'TURN_ACTIONS' && isMyTurn && !rolling;
+  const setup = phase.startsWith('SETUP');
+  const setupRoad = phase.endsWith('_ROAD');
+
+  const costs = {
+    road: '1 wood · 1 brick',
+    settlement: '1 wood · 1 brick · 1 wheat · 1 sheep',
+    city: '2 wheat · 3 ore',
+  };
+
+  // Turn status label
+  const activeName = activePlayer.name.replace(' (Bot)', '');
+  let turnStatus = '';
+  if (setup) {
+    turnStatus = !isMyTurn
+      ? `${activeName} is Placing ${setupRoad ? 'Road' : 'Settlement'}`
+      : `Placing ${setupRoad ? 'Road' : 'Settlement'}`;
+  } else if (phase === 'TURN_ROLL') {
+    turnStatus = !isMyTurn ? `${activeName} is Rolling Dice` : 'Roll the Dice';
+  } else if (phase === 'TURN_ROBBER_MOVE') {
+    turnStatus = !isMyTurn ? `${activeName} is Moving Robber` : 'Move the Robber';
+  } else if (phase === 'TURN_ROBBER_DISCARD') {
+    turnStatus = 'Discard Half Cards';
+  } else if (phase === 'TURN_ROBBER_STEAL') {
+    turnStatus = !isMyTurn ? `${activeName} is Stealing` : 'Choose Player to Steal';
+  } else if (phase === 'TURN_ACTIONS') {
+    turnStatus = !isMyTurn
+      ? `${activeName}'s Turn`
+      : buildMode
+      ? `Placing ${buildMode}`
+      : 'Your Turn';
+  } else if (phase === 'GAME_OVER') {
+    turnStatus = 'Game Over';
+  }
+
+  // Timer format (mm:ss)
+  const formatTimer = (secs: number) => {
+    const s = Math.max(0, Math.floor(secs));
+    const mins = Math.floor(s / 60);
+    const remainder = s % 60;
+    return `${String(mins).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="bottom-action-dock" role="toolbar" aria-label="Game actions toolbar">
+      {/* Turn Pill & Timer (Mirrored from Photo) */}
+      <div className={`turn-pill ${isMyTurn ? 'turn-pill-active' : ''}`}>
+        <div
+          className="turn-pill-avatar"
+          style={{ backgroundColor: PIECE_COLORS[activePlayer.color] }}
+          aria-hidden="true"
+        >
+          {phase === 'TURN_ROLL' ? <Dices size={15} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
+        </div>
+        <div className="turn-pill-info">
+          <span className="turn-pill-title">{turnStatus}</span>
+          <span className="turn-pill-phase">
+            {setup ? 'Setup Round' : isMyTurn ? 'Your Move' : `${activeName}'s Turn`}
+          </span>
+        </div>
+        <div className="turn-pill-timer" aria-label="Turn time remaining">
+          {formatTimer(turnTimeRemainingSeconds)}
+        </div>
+      </div>
+
+      {/* Action Buttons Toolbar (Mirrored from Photo: Trade, Cards, Road, Settlement, City, Action) */}
+      <div className="action-buttons-group">
+        {/* Trade Button */}
+        <button
+          type="button"
+          className="hud-action-btn"
+          onClick={onOpenTradeModal}
+          disabled={setup || rolling}
+          title="Trade with players"
+          aria-label="Trade with players"
+        >
+          <ArrowLeftRight size={18} />
+          <span className="hud-action-label">Trade</span>
+        </button>
+
+        {/* Development Cards Button */}
+        <button
+          type="button"
+          className="hud-action-btn"
+          onClick={onOpenDevCardModal}
+          disabled={rolling}
+          title="Development cards (Play or Buy)"
+          aria-label="Development cards"
+        >
+          <Layers size={18} />
+          <span className="hud-action-label">Cards</span>
+        </button>
+
+        <div className="hud-action-separator" aria-hidden="true" />
+
+        {/* Road Build Button */}
+        {(() => {
+          const supply = player.roadsLeft;
+          const affordable = freeRoadsRemaining > 0 || canAfford(player, BUILDING_COSTS.road);
+          const isSelected = buildMode === 'road';
+          return (
+            <button
+              type="button"
+              className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              disabled={!actions || !affordable || supply <= 0}
+              title={`Road (${costs.road})${!affordable ? ' — Needs resources' : ''}`}
+              onClick={() => onSetBuildMode(isSelected ? null : 'road')}
+              aria-label={`Build road (${supply} left)`}
+            >
+              <span className="hud-badge">{freeRoadsRemaining > 0 ? `${freeRoadsRemaining}*` : supply}</span>
+              <Route size={18} />
+              <span className="hud-action-label">Road</span>
+            </button>
+          );
+        })()}
+
+        {/* Settlement Build Button */}
+        {(() => {
+          const supply = player.settlementsLeft;
+          const affordable = canAfford(player, BUILDING_COSTS.settlement);
+          const isSelected = buildMode === 'settlement';
+          return (
+            <button
+              type="button"
+              className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              disabled={!actions || !affordable || supply <= 0}
+              title={`Settlement (${costs.settlement})${!affordable ? ' — Needs resources' : ''}`}
+              onClick={() => onSetBuildMode(isSelected ? null : 'settlement')}
+              aria-label={`Build settlement (${supply} left)`}
+            >
+              <span className="hud-badge">{supply}</span>
+              <Home size={18} />
+              <span className="hud-action-label">Settle</span>
+            </button>
+          );
+        })()}
+
+        {/* City Build Button */}
+        {(() => {
+          const supply = player.citiesLeft;
+          const affordable = canAfford(player, BUILDING_COSTS.city);
+          const isSelected = buildMode === 'city';
+          return (
+            <button
+              type="button"
+              className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              disabled={!actions || !affordable || supply <= 0}
+              title={`City (${costs.city})${!affordable ? ' — Needs resources' : ''}`}
+              onClick={() => onSetBuildMode(isSelected ? null : 'city')}
+              aria-label={`Build city (${supply} left)`}
+            >
+              <span className="hud-badge">{supply}</span>
+              <Castle size={18} />
+              <span className="hud-action-label">City</span>
+            </button>
+          );
+        })()}
+
+        {/* Primary Action Button (Roll / End Turn / Waiting Hourglass) */}
+        {phase === 'TURN_ROLL' && isMyTurn ? (
+          <button
+            type="button"
+            className="hud-action-btn hud-primary-action"
+            disabled={rolling}
+            onClick={onRollDice}
+            title="Roll the dice"
+            aria-label="Roll dice"
+          >
+            <Dices size={18} className={rolling ? 'animate-spin' : ''} />
+            <span className="hud-action-label">{rolling ? 'Rolling…' : 'Roll'}</span>
+          </button>
+        ) : actions ? (
+          <button
+            type="button"
+            className="hud-action-btn hud-primary-action"
+            onClick={() => {
+              onSetBuildMode(null);
+              onEndTurn();
+            }}
+            title="End your turn"
+            aria-label="End turn"
+          >
+            <ArrowRight size={18} />
+            <span className="hud-action-label">Pass</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="hud-action-btn hud-waiting-btn"
+            disabled
+            title={rolling ? 'Rolling the dice…' : setup ? 'Setup in progress' : 'Waiting for player'}
+            aria-label="Waiting"
+          >
+            <Hourglass size={18} className={isMyTurn ? 'animate-pulse' : ''} />
+            <span className="hud-action-label">Wait</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -7,11 +7,11 @@ import { Crown, Bot, Check, Clock, Copy, CheckCheck, Users, Play, LogOut, Plus, 
 interface WaitingRoomProps {
   room: Room;
   currentPlayerId: string;
-  onAddBot: () => void;
-  onRemovePlayer: (playerId: string) => void;
-  onToggleReady: () => void;
-  onStartGame: () => void;
-  onLeaveRoom: () => void;
+  onAddBot: () => Promise<unknown>;
+  onRemovePlayer: (playerId: string) => Promise<unknown>;
+  onToggleReady: () => Promise<unknown>;
+  onStartGame: () => Promise<unknown>;
+  onLeaveRoom: () => Promise<unknown>;
 }
 
 export const WaitingRoom: React.FC<WaitingRoomProps> = ({
@@ -24,15 +24,26 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
   onLeaveRoom,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const run = async (action: () => Promise<unknown>) => {
+    if (busy) return;
+    setBusy(true); setError('');
+    try { await action(); }
+    catch (error) { setError(error instanceof Error ? error.message : 'Could not update the room.'); }
+    finally { setBusy(false); }
+  };
 
   const me = room.players.find((p) => p.id === currentPlayerId);
   const isHost = me?.isHost || false;
   const canStart = room.players.length >= 2 && room.players.every((p) => p.isReady || p.isHost);
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(room.code);
+  const handleCopyCode = async () => {
+    try {
+    await navigator.clipboard.writeText(room.code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    } catch { setError(`Copy this room code: ${room.code}`); }
   };
 
   // Generate slots up to maxPlayers
@@ -43,6 +54,8 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-md text-white">
+      {error && <p className="notice notice-error" role="alert">{error}</p>}
+      <fieldset disabled={busy} className="contents">
       {/* Room Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800">
         <div>
@@ -130,7 +143,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
                     {/* Host Kick Button */}
                     {isHost && !isCurrentMe && (
                       <button
-                        onClick={() => onRemovePlayer(player.id)}
+                        onClick={() => void run(() => onRemovePlayer(player.id))}
                         className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg transition-colors"
                         title="Remove"
                       >
@@ -158,7 +171,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
                 {/* Host Add Bot button */}
                 {isHost && (
                   <button
-                    onClick={onAddBot}
+                    onClick={() => void run(onAddBot)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Bot
@@ -173,7 +186,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
       {/* Lobby Controls Footer */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-slate-800">
         <button
-          onClick={onLeaveRoom}
+          onClick={() => void run(onLeaveRoom)}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
         >
           <LogOut className="w-4 h-4" /> Leave Room
@@ -183,7 +196,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           {/* Ready Toggle for non-hosts */}
           {!isHost && me && (
             <button
-              onClick={onToggleReady}
+              onClick={() => void run(onToggleReady)}
               className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
                 me.isReady
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
@@ -198,7 +211,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           {/* Start Game for Host */}
           {isHost && (
             <button
-              onClick={onStartGame}
+              onClick={() => void run(onStartGame)}
               disabled={!canStart}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-extrabold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-40 disabled:pointer-events-none text-slate-950 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
             >
@@ -208,6 +221,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           )}
         </div>
       </div>
+      </fieldset>
     </div>
   );
 };

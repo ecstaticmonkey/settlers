@@ -37,7 +37,10 @@ export const VertexNode: React.FC<VertexNodeProps> = ({
     const y = vertex.pixelY;
 
     return (
-      <g filter="drop-shadow(0 2px 3px rgba(0,0,0,0.4))">
+      <g
+        filter="drop-shadow(0 2px 3px rgba(0,0,0,0.4))"
+        transform={`translate(${x}, ${y}) scale(1.35) translate(${-x}, ${-y})`}
+      >
         {/* House shape */}
         <polygon
           points={`${x},${y - 13} ${x + 9},${y - 4} ${x + 9},${y + 8} ${x - 9},${y + 8} ${x - 9},${y - 4}`}
@@ -58,7 +61,10 @@ export const VertexNode: React.FC<VertexNodeProps> = ({
     const y = vertex.pixelY;
 
     return (
-      <g filter="drop-shadow(0 2px 4px rgba(0,0,0,0.45))">
+      <g
+        filter="drop-shadow(0 2px 4px rgba(0,0,0,0.45))"
+        transform={`translate(${x}, ${y}) scale(1.35) translate(${-x}, ${-y})`}
+      >
         {/* City castle shape: taller left tower and wider right base */}
         <path
           d={`M ${x - 12} ${y + 9} 

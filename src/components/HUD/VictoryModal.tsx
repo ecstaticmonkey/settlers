@@ -18,11 +18,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   onPlayAgain,
   onReturnToLobby,
 }) => {
-  if (!winnerPlayerId) return null;
-
   const winner = players.find((p) => p.id === winnerPlayerId);
 
   useEffect(() => {
+    if (!winnerPlayerId) return;
     // Launch celebratory confetti burst
     const count = 200;
     const defaults = {
@@ -59,7 +58,9 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
       spread: 120,
       startVelocity: 45,
     });
-  }, []);
+  }, [winnerPlayerId]);
+
+  if (!winnerPlayerId) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">

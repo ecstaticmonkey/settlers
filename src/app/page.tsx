@@ -8,32 +8,53 @@ import { WaitingRoom } from '@/components/Lobby/WaitingRoom';
 import { CreateRoomModal } from '@/components/Lobby/CreateRoomModal';
 import { AuthModal } from '@/components/Auth/AuthModal';
 import { GameView } from '@/components/Game/GameView';
+import { MultiplayerError } from '@/lib/multiplayer/types';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string }>({
-    id: 'guest-1',
+    id: '',
     name: 'Settler101',
   });
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Modals
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
 
-  // Initialize user from localStorage or generate random guest
+  // Identity is verified by an HTTP-only server cookie. Only the display name
+  // and last room ID are browser preferences; room/game data lives in Supabase.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('catan_user');
-      if (stored) {
-        queueMicrotask(() => setCurrentUser(JSON.parse(stored)));
-      } else {
-        const rand = Math.floor(Math.random() * 900) + 100;
-        const initial = { id: `user-${Date.now()}`, name: `Settler${rand}` };
-        queueMicrotask(() => setCurrentUser(initial));
-        localStorage.setItem('catan_user', JSON.stringify(initial));
+    let active = true;
+    void (async () => {
+      try {
+        const session = await roomService.getSession();
+        let name = `Settler${Math.floor(Math.random() * 900) + 100}`;
+        let roomId: string | null = null;
+        try {
+          const stored = JSON.parse(localStorage.getItem('catan_user') || 'null');
+          if (typeof stored?.name === 'string' && stored.name.trim()) name = stored.name.trim().slice(0, 20);
+          roomId = localStorage.getItem('catan_active_room');
+          localStorage.setItem('catan_user', JSON.stringify({ id: session.id, name }));
+        } catch {}
+        if (!active) return;
+        setCurrentUser({ id: session.id, name });
+        if (roomId) {
+          try {
+            const room = await roomService.getRoom(roomId);
+            if (active && room) { setCurrentRoom(room); setGameState(room.gameState ?? null); }
+          } catch (error) {
+            if (active) setConnectionError(error instanceof Error ? error.message : 'Could not restore your table.');
+          }
+        }
+        if (active) setInitialized(true);
+      } catch (error) {
+        if (active) setConnectionError(error instanceof Error ? error.message : 'Could not connect. Please reload.');
       }
-    } catch {}
+    })();
+    return () => { active = false; };
   }, []);
 
   const activeRoomId = currentRoom?.id;
@@ -44,13 +65,19 @@ export default function Home() {
 
     const unsubscribe = roomService.subscribeToRoom(activeRoomId, (updatedRoom) => {
       setCurrentRoom(updatedRoom);
-      if (updatedRoom.gameState) {
-        setGameState(updatedRoom.gameState);
-      }
+      setGameState(updatedRoom.gameState ?? null);
     });
+    const disconnect = roomService.subscribeToConnection(activeRoomId, setConnectionError);
 
-    return () => unsubscribe();
+    return () => { unsubscribe(); disconnect(); };
   }, [activeRoomId]);
+
+  const enterRoom = (room: Room) => {
+    setConnectionError(null);
+    setCurrentRoom(room);
+    setGameState(room.gameState ?? null);
+    try { localStorage.setItem('catan_active_room', room.id); } catch {}
+  };
 
   const handleUpdateUser = (name: string) => {
     const updated = { ...currentUser, name };
@@ -70,19 +97,12 @@ export default function Home() {
     color: import('@/lib/catan/types').PlayerColor;
   }) => {
     const room = await roomService.createRoom(options.name, currentUser, options);
-    setCurrentRoom(room);
+    enterRoom(room);
   };
 
   // Join room handler
-  const handleJoinRoom = async (roomIdOrCode: string) => {
-    const found = await roomService.getRoom(roomIdOrCode);
-    if (!found) throw new Error('Room not found');
-
-    const updated = await roomService.joinRoom(found.id, currentUser);
-    setCurrentRoom(updated);
-    if (updated.gameState) {
-      setGameState(updated.gameState);
-    }
+  const handleJoinRoom = async (roomIdOrCode: string, passCode?: string) => {
+    enterRoom(await roomService.joinRoom(roomIdOrCode, currentUser, passCode));
   };
 
   // Quick Play vs Bots
@@ -101,7 +121,7 @@ export default function Home() {
 
     // 3. Start Game immediately
     const { room: startedRoom, gameState: initialGame } = await roomService.startGame(room.id);
-    setCurrentRoom(startedRoom);
+    enterRoom(startedRoom);
     setGameState(initialGame);
   };
 
@@ -118,14 +138,20 @@ export default function Home() {
     if (currentRoom) {
       try {
         await roomService.removePlayer(currentRoom.id, currentUser.id);
-      } catch {}
+      } catch (error) {
+        if (!(error instanceof MultiplayerError) || ![403, 404].includes(error.status)) throw error;
+      }
     }
     setCurrentRoom(null);
     setGameState(null);
+    setConnectionError(null);
+    try { localStorage.removeItem('catan_active_room'); } catch {}
   };
 
+  if (!initialized) return <main className="waiting-page"><div role="status">{connectionError || 'Connecting to your tables…'}{connectionError && <button className="button" onClick={() => window.location.reload()}>Retry connection</button>}</div></main>;
+
   // VIEW 1: Active In-Game View
-  if (currentRoom && gameState && currentRoom.status === 'in_progress') {
+  if (currentRoom && gameState && (currentRoom.status === 'in_progress' || currentRoom.status === 'finished')) {
     return (
       <GameView
         roomId={currentRoom.id}
@@ -141,12 +167,13 @@ export default function Home() {
   if (currentRoom && currentRoom.status === 'waiting') {
     return (
       <div className="waiting-page">
+        {connectionError && <p className="notice notice-error" role="alert">{connectionError}</p>}
         <WaitingRoom
           room={currentRoom}
           currentPlayerId={currentUser.id}
           onAddBot={() => roomService.addBot(currentRoom.id)}
           onRemovePlayer={(pId) => roomService.removePlayer(currentRoom.id, pId)}
-          onToggleReady={() => roomService.toggleReady(currentRoom.id, currentUser.id)}
+          onToggleReady={() => roomService.toggleReady(currentRoom.id)}
           onStartGame={handleStartGame}
           onLeaveRoom={handleLeave}
         />

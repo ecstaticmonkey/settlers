@@ -60,7 +60,7 @@ export function makeIsland(board: GameBoard, preview = false) {
     }
   });
   function house(x: number,z: number,color: string,city=false) {
-    const g=new THREE.Group();g.position.set(x,.23,z);root.add(g);
+    const g=new THREE.Group();g.position.set(x,.23,z);g.scale.set(1.4,1.4,1.4);root.add(g);
     box(.25,.23,.24,color,0,.12,0,g);
     const roof=cone(.23,.2,'#794c3c',0,.33,0,4,g);roof.rotation.y=Math.PI/4;roof.scale.z=.83;
     box(.055,.11,.012,'#493c31',0,.065,.126,g);

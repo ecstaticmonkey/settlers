@@ -1,26 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, GameAction } from '@/lib/catan/types';
+import { GameState, GameAction, Resource } from '@/lib/catan/types';
 import { roomService } from '@/lib/multiplayer/room-service';
 import { soundManager } from '@/lib/sound/audio';
 import { CatanBoard } from '../Board/CatanBoard';
 import { PlayerRoster } from '../HUD/PlayerRoster';
 import { ResourceHand } from '../HUD/ResourceHand';
 import { ActionBar } from '../HUD/ActionBar';
+import { BankDeckBar } from '../HUD/BankDeckBar';
+import { GameLog } from '../HUD/GameLog';
 import { TradeModal } from '../HUD/TradeModal';
 import { BankTradeModal } from '../HUD/BankTradeModal';
 import { DevCardModal } from '../HUD/DevCardModal';
 import { RobberModal } from '../HUD/RobberModal';
-import { GameLog } from '../HUD/GameLog';
 import { VictoryModal } from '../HUD/VictoryModal';
-import { Volume2, VolumeX, LogOut, Home, BookOpen, Trophy, X } from 'lucide-react';
+import { RulebookModal } from '../HUD/RulebookModal';
+import { SettingsModal } from '../HUD/SettingsModal';
+import { Settings, BookOpen, Maximize2, Info, X } from 'lucide-react';
 
 import dynamic from 'next/dynamic';
 const DiceTray = dynamic(() => import('../HUD/DiceTray'), { ssr: false });
-
-import { Brand } from '../UI/Brand';
-import { Dialog } from '../UI/Dialog';
 
 interface GameViewProps {
   roomCode: string;
@@ -45,18 +45,33 @@ export const GameView: React.FC<GameViewProps> = ({
   const [isRolling, setIsRolling] = useState(false);
   const [rollPending, setRollPending] = useState(false);
   const rollInFlight = useRef(false);
-  const [journalOpen, setJournalOpen] = useState(false);
-  // Modal open states
+
+  // Modals state
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [isDevCardModalOpen, setIsDevCardModalOpen] = useState(false);
+  const [isRulebookOpen, setIsRulebookOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Turn timer countdown
+  const [remainingSeconds, setRemainingSeconds] = useState(gameState.turnTimeRemainingSeconds || 30);
+
+  useEffect(() => {
+    setRemainingSeconds(gameState.turnTimeRemainingSeconds || 30);
+  }, [gameState.turnTimeRemainingSeconds, gameState.turnNumber, gameState.phase]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRemainingSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Subscribe to real-time game state updates
   useEffect(() => {
     const unsubscribe = roomService.subscribeToGameState(roomId, (newState) => {
       setGameState(newState);
 
-      // Play audio cues based on phase transitions
       if (newState.phase === 'GAME_OVER') {
         soundManager.playVictory();
       }
@@ -95,16 +110,30 @@ export const GameView: React.FC<GameViewProps> = ({
     [roomId]
   );
 
-  const activePlayer = gameState.players[gameState.activePlayerIndex];
+  const activePlayer = gameState.players[gameState.activePlayerIndex] || gameState.players[0];
   const me = gameState.players.find((p) => p.id === currentPlayerId) || gameState.players[0];
   const isMyTurn = activePlayer?.id === me.id;
+  const setup = gameState.phase.startsWith('SETUP');
+
+  // Compute bank resource counts (19 of each in standard Catan)
+  const bankResources: Record<Resource, number> = {
+    wood: Math.max(0, 19 - gameState.players.reduce((sum, p) => sum + (p.resources.wood || 0), 0)),
+    brick: Math.max(0, 19 - gameState.players.reduce((sum, p) => sum + (p.resources.brick || 0), 0)),
+    sheep: Math.max(0, 19 - gameState.players.reduce((sum, p) => sum + (p.resources.sheep || 0), 0)),
+    wheat: Math.max(0, 19 - gameState.players.reduce((sum, p) => sum + (p.resources.wheat || 0), 0)),
+    ore: Math.max(0, 19 - gameState.players.reduce((sum, p) => sum + (p.resources.ore || 0), 0)),
+  };
 
   const handleRollDice = async () => {
     if (rollInFlight.current || isRolling || !isMyTurn || gameState.phase !== 'TURN_ROLL') return;
     rollInFlight.current = true;
     setRollPending(true);
-    try { await handleDispatch({ type: 'ROLL_DICE' }); }
-    finally { rollInFlight.current = false; setRollPending(false); }
+    try {
+      await handleDispatch({ type: 'ROLL_DICE' });
+    } finally {
+      rollInFlight.current = false;
+      setRollPending(false);
+    }
   };
 
   // Board selection handlers
@@ -131,7 +160,6 @@ export const GameView: React.FC<GameViewProps> = ({
       handleDispatch({ type: 'PLACE_INITIAL_ROAD', edgeId });
     } else if (gameState.phase === 'TURN_ACTIONS' && buildMode === 'road') {
       handleDispatch({ type: 'BUILD_ROAD', edgeId });
-      // Keep road build mode if free roads remaining
       if (gameState.freeRoadsRemaining <= 1) {
         setBuildMode(null);
       }
@@ -149,28 +177,164 @@ export const GameView: React.FC<GameViewProps> = ({
     setIsMuted(next);
   };
 
-  const setup = gameState.phase.startsWith('SETUP');
-  const placingRoad = gameState.phase.endsWith('_ROAD');
-  const prompt = setup ? (placingRoad ? 'Connect your settlement' : 'Choose a place to call home') : gameState.phase === 'TURN_ROLL' ? 'A new turn. New possibilities.' : gameState.phase === 'TURN_ROBBER_MOVE' ? 'The robber is on the move' : gameState.phase === 'TURN_ROBBER_DISCARD' ? 'Make room in your hand' : buildMode ? `Build your ${buildMode}` : 'Make your next move';
-  const detail = !isMyTurn ? `${activePlayer.name.replace(' (Bot)', '')} is ${setup ? 'placing their first pieces' : 'taking their turn'}.` : setup ? (placingRoad ? 'Choose a highlighted path next to your new settlement.' : 'Choose a glowing intersection. A mix of resources is a good start.') : gameState.phase === 'TURN_ROLL' ? 'Roll the dice to see what the island provides.' : gameState.phase === 'TURN_ROBBER_MOVE' ? 'Select a number token to choose a different hex.' : gameState.phase === 'TURN_ROBBER_DISCARD' ? 'Players with more than seven resources must discard half.' : buildMode ? 'Choose a highlighted location on the island.' : 'Build, trade, or play a card. End your turn when you’re ready.';
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   return (
-    <div className="game-shell">
-      <header className="game-header"><Brand compact/><div className="game-header-meta"><span>THE MAIN ISLAND</span><span>Table <b>{roomCode}</b></span><span>Turn <b>{gameState.turnNumber}</b></span></div><div className="game-header-actions"><button className="icon-button mobile-journal-toggle" aria-label="Open island journal" onClick={()=>setJournalOpen(true)}><BookOpen size={16}/></button><button className="icon-button" onClick={toggleSound} aria-label={isMuted?'Unmute sound':'Mute sound'}>{isMuted?<VolumeX size={16}/>:<Volume2 size={16}/>}</button><button className="text-button" onClick={onLeaveGame}><LogOut size={15}/>Lobby</button></div></header>
-      <main className="game-table">
-        <div className="game-center">
-          <div className={`board-stage ${!setup ? 'board-with-dice' : ''}`}><div className="board-heading"><span className="eyebrow">YOUR WORLD, TAKING SHAPE</span><h2>The main island</h2><p>{setup?'Every adventure starts somewhere.':'A little strategy goes a long way.'}</p></div><span className="board-edition">CATAN / 01</span>
-            <CatanBoard board={gameState.board} phase={gameState.phase} activePlayer={activePlayer} currentPlayerId={me.id} buildMode={buildMode} lastPlacedVertexId={gameState.lastPlacedVertexId} onSelectVertex={handleSelectVertex} onSelectEdge={handleSelectEdge} onSelectHex={handleSelectHex}/>
-            {!setup && <DiceTray dice={gameState.dice} turn={gameState.turnNumber} canRoll={isMyTurn && gameState.phase === 'TURN_ROLL' && !rollPending} playerName={activePlayer.name.replace(' (Bot)', '')} onRoll={handleRollDice} onRollingChange={setIsRolling}/> }
-            {error&&<div className="notice notice-error game-error" role="alert">{error}<button aria-label="Dismiss error" onClick={()=>setError('')}><X size={16}/></button></div>}
-          </div>
-          <div className={`turn-banner ${isMyTurn?'my-turn':''}`} role="status"><span className="turn-banner-icon"><Home size={18}/></span><div><h3>{isMyTurn?prompt:`${activePlayer.name.replace(' (Bot)','')}’s turn`}</h3><p>{detail}</p></div><small>{setup?'Founding the island':isMyTurn?'Your turn':'Around the table'}</small></div>
-          {gameState.activeTradeOffer && gameState.activeTradeOffer.fromPlayerId!==me.id&&<button className="notice" onClick={()=>setIsTradeModalOpen(true)}>A settler has offered a trade. View offer →</button>}
-          <ResourceHand resources={me.resources} onOpenBankTrade={()=>setIsBankModalOpen(true)} canTrade={isMyTurn&&!isRolling&&gameState.phase==='TURN_ACTIONS'}/>
+    <div className="catan-viewport-root">
+      {/* Full-bleed board canvas area */}
+      <div className="catan-board-viewport">
+        <CatanBoard
+          board={gameState.board}
+          phase={gameState.phase}
+          activePlayer={activePlayer}
+          currentPlayerId={me.id}
+          buildMode={buildMode}
+          lastPlacedVertexId={gameState.lastPlacedVertexId}
+          onSelectVertex={handleSelectVertex}
+          onSelectEdge={handleSelectEdge}
+          onSelectHex={handleSelectHex}
+        />
+      </div>
+
+      {/* TOP-LEFT: Floating Utility Toolbar (Settings, Rules, Fullscreen, Info) */}
+      <div className="hud-top-left-toolbar" role="toolbar" aria-label="Quick tools">
+        <button
+          type="button"
+          className="hud-tool-btn"
+          onClick={() => setIsSettingsOpen(true)}
+          title="Game Settings & Audio"
+          aria-label="Open settings"
+        >
+          <Settings size={18} />
+        </button>
+        <button
+          type="button"
+          className="hud-tool-btn"
+          onClick={() => setIsRulebookOpen(true)}
+          title="Rulebook & Guide"
+          aria-label="Open rulebook"
+        >
+          <BookOpen size={18} />
+        </button>
+        <button
+          type="button"
+          className="hud-tool-btn"
+          onClick={toggleFullscreen}
+          title="Toggle Fullscreen"
+          aria-label="Toggle fullscreen"
+        >
+          <Maximize2 size={18} />
+        </button>
+        <button
+          type="button"
+          className="hud-tool-btn"
+          onClick={() => setIsSettingsOpen(true)}
+          title={`Table ${roomCode} · Turn ${gameState.turnNumber}`}
+          aria-label="Table info"
+        >
+          <Info size={18} />
+        </button>
+      </div>
+
+      {/* TOP-CENTER: Floating Objective Ribbon Banner */}
+      <div className="hud-top-ribbon-wrap" pointer-events="none">
+        <div className="hud-ribbon-banner">
+          <span>To win the game, reach 10 points</span>
+          <span className="hud-ribbon-trophy" aria-hidden="true">
+            🏆
+          </span>
         </div>
-        <aside className="game-sidebar"><section><div className="sidebar-heading"><span className="eyebrow">AROUND THE TABLE</span><span>{gameState.players.length} settlers</span></div><PlayerRoster players={gameState.players} activePlayerIndex={gameState.activePlayerIndex} longestRoadOwnerId={gameState.longestRoadOwnerId} longestRoadLength={gameState.longestRoadLength} largestArmyOwnerId={gameState.largestArmyOwnerId} largestArmyCount={gameState.largestArmyCount} currentPlayerId={me.id}/><p className="achievement-note"><Trophy size={14}/> The first to 10 points takes the island.</p></section><GameLog logs={gameState.logs}/></aside>
-      </main>
-      <ActionBar phase={gameState.phase} player={me} isMyTurn={isMyTurn} rolling={isRolling || rollPending} buildMode={buildMode} onSetBuildMode={setBuildMode} onRollDice={handleRollDice} onBuyDevCard={()=>handleDispatch({type:'BUY_DEV_CARD'})} onOpenTradeModal={()=>setIsTradeModalOpen(true)} onOpenDevCardModal={()=>setIsDevCardModalOpen(true)} onEndTurn={()=>handleDispatch({type:'END_TURN'})} freeRoadsRemaining={gameState.freeRoadsRemaining}/>
-      {journalOpen&&<Dialog title="Island journal" onClose={()=>setJournalOpen(false)}><div className="journal-dialog"><GameLog logs={gameState.logs}/></div></Dialog>}
+      </div>
+
+      {/* RIGHT COLUMN: Chat Log -> Bank Supply Deck -> Player Roster */}
+      <div className="hud-right-column">
+        <GameLog logs={gameState.logs} onOpenRulebook={() => setIsRulebookOpen(true)} />
+
+        <BankDeckBar
+          bankResources={bankResources}
+          devCardsRemaining={gameState.devCardDeck?.length ?? 25}
+          canTrade={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
+          onOpenBankTrade={() => setIsBankModalOpen(true)}
+        />
+
+        <PlayerRoster
+          players={gameState.players}
+          activePlayerIndex={gameState.activePlayerIndex}
+          longestRoadOwnerId={gameState.longestRoadOwnerId}
+          longestRoadLength={gameState.longestRoadLength}
+          largestArmyOwnerId={gameState.largestArmyOwnerId}
+          largestArmyCount={gameState.largestArmyCount}
+          currentPlayerId={me.id}
+        />
+      </div>
+
+      {/* BOTTOM DOCK: Resource Hand Tray (Left) + Turn Pill & Actions Group (Right) */}
+      <div className="hud-bottom-dock">
+        <ResourceHand
+          resources={me.resources}
+          onOpenBankTrade={() => setIsBankModalOpen(true)}
+          canTrade={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
+        />
+
+        <ActionBar
+          phase={gameState.phase}
+          player={me}
+          activePlayer={activePlayer}
+          isMyTurn={isMyTurn}
+          rolling={isRolling || rollPending}
+          buildMode={buildMode}
+          onSetBuildMode={setBuildMode}
+          onRollDice={handleRollDice}
+          onBuyDevCard={() => handleDispatch({ type: 'BUY_DEV_CARD' })}
+          onOpenTradeModal={() => setIsTradeModalOpen(true)}
+          onOpenDevCardModal={() => setIsDevCardModalOpen(true)}
+          onEndTurn={() => handleDispatch({ type: 'END_TURN' })}
+          freeRoadsRemaining={gameState.freeRoadsRemaining}
+          turnTimeRemainingSeconds={remainingSeconds}
+        />
+      </div>
+
+      {/* 3D Dice Tray (Positioned neatly in top-left below utility tools) */}
+      {!setup && (
+        <div className="hud-dice-tray-host">
+          <DiceTray
+            dice={gameState.dice}
+            turn={gameState.turnNumber}
+            canRoll={isMyTurn && gameState.phase === 'TURN_ROLL' && !rollPending}
+            playerName={activePlayer.name.replace(' (Bot)', '')}
+            onRoll={handleRollDice}
+            onRollingChange={setIsRolling}
+          />
+        </div>
+      )}
+
+      {/* Incoming Trade Offer Alert Banner */}
+      {gameState.activeTradeOffer && gameState.activeTradeOffer.fromPlayerId !== me.id && (
+        <button
+          type="button"
+          className="hud-trade-alert-pill"
+          onClick={() => setIsTradeModalOpen(true)}
+        >
+          A settler has offered a trade. View offer →
+        </button>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="notice notice-error game-error" role="alert">
+          {error}
+          <button aria-label="Dismiss error" onClick={() => setError('')}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Modals */}
       <TradeModal
         isOpen={isTradeModalOpen}
@@ -224,6 +388,18 @@ export const GameView: React.FC<GameViewProps> = ({
         players={gameState.players}
         onPlayAgain={() => onLeaveGame()}
         onReturnToLobby={() => onLeaveGame()}
+      />
+
+      <RulebookModal isOpen={isRulebookOpen} onClose={() => setIsRulebookOpen(false)} />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        isMuted={isMuted}
+        onToggleSound={toggleSound}
+        roomCode={roomCode}
+        turnNumber={gameState.turnNumber}
+        onLeaveGame={onLeaveGame}
       />
     </div>
   );

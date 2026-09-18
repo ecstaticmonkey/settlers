@@ -1,404 +1,159 @@
-import { GameState, GameAction, PlayerColor } from '../catan/types';
-import { createInitialGameState, createInitialPlayer, processGameAction } from '../catan/engine';
-import { getBotAction } from '../catan/bot';
-import { DICE_ROLL_DURATION_MS } from '../catan/presentation';
+import type { GameState, GameAction } from '../catan/types';
+import { MultiplayerError, type Room, type CreateRoomOptions } from './types';
+export type { Room, RoomPlayer } from './types';
 
-export interface RoomPlayer {
-  id: string;
-  name: string;
-  color: PlayerColor;
-  isHost: boolean;
-  isReady: boolean;
-  isBot: boolean;
-  botDifficulty?: 'easy' | 'medium';
-  seatIndex: number;
-}
+type Watch = {
+  rooms: Set<(room: Room) => void>;
+  states: Set<(state: GameState) => void>;
+  errors: Set<(error: string | null) => void>;
+  timer?: ReturnType<typeof setTimeout>;
+  stop: () => void;
+};
 
-export interface Room {
-  id: string;
-  code: string;
-  name: string;
-  hostId: string;
-  isPrivate: boolean;
-  passCode?: string;
-  maxPlayers: number;
-  turnTimerSeconds: number;
-  status: 'waiting' | 'in_progress' | 'finished';
-  players: RoomPlayer[];
-  createdAt: number;
-  gameState?: GameState;
-}
-
-const AVAILABLE_COLORS: PlayerColor[] = ['red', 'blue', 'orange', 'white', 'green'];
-const STORAGE_KEY = 'catan_rooms_data';
-
-// Helper to get rooms from local storage cache
-function getLocalRooms(): Record<string, Room> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveLocalRooms(rooms: Record<string, Room>) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms));
-  } catch {}
-}
-
+// Room data always comes from the shared backend. Local storage is used only by
+// the UI for display preferences and the last visited room ID.
 export class RoomService {
-  private static instance: RoomService;
-  private broadcastChannels = new Map<string, BroadcastChannel>();
-  private roomListeners = new Map<string, Set<(room: Room) => void>>();
-  private stateListeners = new Map<string, Set<(state: GameState) => void>>();
-  private botLoops = new Map<string, NodeJS.Timeout>();
+  private session: Promise<{ id: string }> | null = null;
+  private cache = new Map<string, Room>();
+  private watches = new Map<string, Watch>();
 
-  private constructor() {}
-
-  public static getInstance(): RoomService {
-    if (!RoomService.instance) {
-      RoomService.instance = new RoomService();
-    }
-    return RoomService.instance;
-  }
-
-  // Generate 6-letter room code
-  private generateCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  }
-
-  // Get active rooms list
-  public async getRooms(): Promise<Room[]> {
-    const local = getLocalRooms();
-    return Object.values(local).filter((r) => r.status !== 'finished');
-  }
-
-  // Get a single room by ID or Code
-  public async getRoom(roomIdOrCode: string): Promise<Room | null> {
-    const local = getLocalRooms();
-    const found =
-      local[roomIdOrCode] ||
-      Object.values(local).find((r) => r.code.toUpperCase() === roomIdOrCode.toUpperCase());
-    return found || null;
-  }
-
-  // Create a new room
-  public async createRoom(
-    name: string,
-    hostPlayer: { id: string; name: string },
-    options: {
-      isPrivate?: boolean;
-      passCode?: string;
-      maxPlayers?: number;
-      turnTimerSeconds?: number;
-      color?: PlayerColor;
-    } = {}
-  ): Promise<Room> {
-    const id = `room-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const code = this.generateCode();
-    const color = options.color || 'red';
-
-    const player: RoomPlayer = {
-      id: hostPlayer.id,
-      name: hostPlayer.name,
-      color,
-      isHost: true,
-      isReady: true,
-      isBot: false,
-      seatIndex: 0,
-    };
-
-    const room: Room = {
-      id,
-      code,
-      name,
-      hostId: hostPlayer.id,
-      isPrivate: !!options.isPrivate,
-      passCode: options.passCode,
-      maxPlayers: options.maxPlayers || 4,
-      turnTimerSeconds: options.turnTimerSeconds || 60,
-      status: 'waiting',
-      players: [player],
-      createdAt: Date.now(),
-    };
-
-    const rooms = getLocalRooms();
-    rooms[id] = room;
-    saveLocalRooms(rooms);
-    this.broadcastRoom(room);
-
-    return room;
-  }
-
-  // Join existing room
-  public async joinRoom(
-    roomId: string,
-    player: { id: string; name: string },
-    color?: PlayerColor
-  ): Promise<Room> {
-    const room = await this.getRoom(roomId);
-    if (!room) throw new Error('Room not found');
-
-    const existingIndex = room.players.findIndex((p) => p.id === player.id);
-    if (existingIndex !== -1) {
-      // Restore a player's existing local table, including active games.
-      if (room.status === 'in_progress') this.ensureBotTurnRunner(room.id);
-      return room;
-    }
-
-    if (room.status !== 'waiting') throw new Error('Game already started');
-
-    if (room.players.length >= room.maxPlayers) {
-      throw new Error('Room is full');
-    }
-
-    // Pick first unused color
-    const usedColors = new Set(room.players.map((p) => p.color));
-    const assignedColor = color && !usedColors.has(color)
-      ? color
-      : AVAILABLE_COLORS.find((c) => !usedColors.has(c)) || 'orange';
-
-    const newPlayer: RoomPlayer = {
-      id: player.id,
-      name: player.name,
-      color: assignedColor,
-      isHost: false,
-      isReady: false,
-      isBot: false,
-      seatIndex: room.players.length,
-    };
-
-    room.players.push(newPlayer);
-    const rooms = getLocalRooms();
-    rooms[room.id] = room;
-    saveLocalRooms(rooms);
-    this.broadcastRoom(room);
-
-    return room;
-  }
-
-  // Add Bot to room
-  public async addBot(roomId: string, difficulty: 'easy' | 'medium' = 'medium'): Promise<Room> {
-    const room = await this.getRoom(roomId);
-    if (!room) throw new Error('Room not found');
-    if (room.players.length >= room.maxPlayers) throw new Error('Room is full');
-
-    const usedColors = new Set(room.players.map((p) => p.color));
-    const botColor = AVAILABLE_COLORS.find((c) => !usedColors.has(c)) || 'blue';
-    const botIndex = room.players.filter((p) => p.isBot).length + 1;
-
-    const botNames = ['RoboTrader', 'HexMaster', 'SettlerBot', 'IslandAI'];
-    const botName = `${botNames[botIndex % botNames.length]} (Bot)`;
-
-    const botPlayer: RoomPlayer = {
-      id: `bot-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-      name: botName,
-      color: botColor,
-      isHost: false,
-      isReady: true,
-      isBot: true,
-      botDifficulty: difficulty,
-      seatIndex: room.players.length,
-    };
-
-    room.players.push(botPlayer);
-    const rooms = getLocalRooms();
-    rooms[room.id] = room;
-    saveLocalRooms(rooms);
-    this.broadcastRoom(room);
-
-    return room;
-  }
-
-  // Remove player or bot from room
-  public async removePlayer(roomId: string, playerId: string): Promise<Room> {
-    const room = await this.getRoom(roomId);
-    if (!room) throw new Error('Room not found');
-
-    room.players = room.players.filter((p) => p.id !== playerId);
-    // Re-index seats
-    room.players.forEach((p, idx) => {
-      p.seatIndex = idx;
+  private async request<T>(path = '', body?: unknown): Promise<T> {
+    const response = await fetch(`/api/multiplayer${path}`, {
+      method: body ? 'POST' : 'GET', cache: 'no-store', credentials: 'same-origin',
+      ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(20000),
     });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new MultiplayerError(result.error || 'Could not connect to the table. Please try again.', response.status);
+    return result as T;
+  }
 
-    const rooms = getLocalRooms();
-    rooms[room.id] = room;
-    saveLocalRooms(rooms);
-    this.broadcastRoom(room);
+  public getSession(): Promise<{ id: string }> {
+    if (!this.session) this.session = this.request<{ id: string }>('?session=1').catch(error => { this.session = null; throw error; });
+    return this.session;
+  }
 
+  private accept(room: Room): Room {
+    const current = this.cache.get(room.id);
+    if (current && current.revision >= room.revision) return current;
+    this.cache.set(room.id, room);
+    const watch = this.watches.get(room.id);
+    watch?.rooms.forEach(cb => cb(room));
+    if (room.gameState) watch?.states.forEach(cb => cb(room.gameState!));
     return room;
   }
 
-  // Toggle ready status
-  public async toggleReady(roomId: string, playerId: string): Promise<Room> {
-    const room = await this.getRoom(roomId);
-    if (!room) throw new Error('Room not found');
-
-    const player = room.players.find((p) => p.id === playerId);
-    if (player) {
-      player.isReady = !player.isReady;
-      const rooms = getLocalRooms();
-      rooms[room.id] = room;
-      saveLocalRooms(rooms);
-      this.broadcastRoom(room);
+  private async mutate(operation: string, body: Record<string, unknown>): Promise<Room> {
+    await this.getSession();
+    try {
+      const { room } = await this.request<{ room: Room }>('', { ...body, operation });
+      return this.accept(room);
+    } catch (error) {
+      if (error instanceof MultiplayerError && error.status === 409 && typeof body.roomId === 'string') {
+        await this.getRoom(body.roomId).catch(() => null);
+      }
+      throw error;
     }
-    return room;
   }
 
-  // Start the Game
-  public async startGame(roomId: string): Promise<{ room: Room; gameState: GameState }> {
-    const room = await this.getRoom(roomId);
-    if (!room) throw new Error('Room not found');
-    if (room.players.length < 2) throw new Error('Need at least 2 players to start');
-
-    // Create Catan players from Room players
-    const catanPlayers = room.players.map((rp) =>
-      createInitialPlayer(rp.id, rp.name, rp.color, rp.isBot, rp.botDifficulty)
-    );
-
-    const gameState = createInitialGameState(room.id, catanPlayers, false);
-    gameState.turnTimeLimitSeconds = room.turnTimerSeconds;
-    gameState.turnTimeRemainingSeconds = room.turnTimerSeconds;
-
-    room.status = 'in_progress';
-    room.gameState = gameState;
-
-    const rooms = getLocalRooms();
-    rooms[room.id] = room;
-    saveLocalRooms(rooms);
-
-    this.broadcastRoom(room);
-    this.broadcastGameState(room.id, gameState);
-
-    // Start Host Bot Automation loop
-    this.ensureBotTurnRunner(room.id);
-
-    return { room, gameState };
+  public async getRooms(): Promise<Room[]> {
+    await this.getSession();
+    // Lobby summaries omit game snapshots; never put them in the room cache.
+    return (await this.request<{ rooms: Room[] }>()).rooms;
   }
 
-  // Dispatch game action
+  public async getRoom(roomId: string): Promise<Room | null> {
+    await this.getSession();
+    try { return this.accept((await this.request<{ room: Room }>(`?room=${encodeURIComponent(roomId)}`)).room); }
+    catch (error) {
+      if (error instanceof MultiplayerError && error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  public createRoom(name: string, player: { id: string; name: string }, options: CreateRoomOptions = {}) {
+    return this.mutate('create', { name, playerName: player.name, options });
+  }
+  public joinRoom(roomId: string, player: { id: string; name: string }, passCode?: string) {
+    return this.mutate('join', { roomId: roomId.trim(), playerName: player.name, passCode });
+  }
+  public addBot(roomId: string, difficulty: 'easy' | 'medium' = 'medium') { return this.mutate('addBot', { roomId, difficulty }); }
+  public removePlayer(roomId: string, playerId: string) { return this.mutate('removePlayer', { roomId, playerId }); }
+  public toggleReady(roomId: string) { return this.mutate('ready', { roomId }); }
+  public async startGame(roomId: string) {
+    const room = await this.mutate('start', { roomId });
+    return { room, gameState: room.gameState! };
+  }
+
   public async dispatchAction(roomId: string, action: GameAction): Promise<GameState> {
-    const room = await this.getRoom(roomId);
-    if (!room || !room.gameState) throw new Error('Active game not found');
-
-    const { state: nextState, error } = processGameAction(room.gameState, action);
-    if (error) {
-      throw new Error(error);
-    }
-
-    room.gameState = nextState;
-    if (nextState.phase === 'GAME_OVER') {
-      room.status = 'finished';
-    }
-
-    const rooms = getLocalRooms();
-    rooms[room.id] = room;
-    saveLocalRooms(rooms);
-
-    this.broadcastGameState(room.id, nextState);
-    this.ensureBotTurnRunner(room.id);
-
-    return nextState;
+    const current = this.cache.get(roomId) ?? await this.getRoom(roomId);
+    if (!current) throw new Error('Room not found');
+    const room = await this.mutate('action', { roomId, action, revision: current.revision });
+    return room.gameState!;
   }
 
-  // Bot Turn Automation runner
-  private ensureBotTurnRunner(roomId: string) {
-    if (this.botLoops.has(roomId)) return;
-
-    const interval = setInterval(async () => {
-      const room = await this.getRoom(roomId);
-      if (!room || !room.gameState || room.status !== 'in_progress') {
-        clearInterval(interval);
-        this.botLoops.delete(roomId);
-        return;
-      }
-
-      // Check if any bot action is pending
-      const lastRoll = room.gameState.logs.findLast(log => log.type === 'dice');
-      if (lastRoll && Date.now() - lastRoll.timestamp < DICE_ROLL_DURATION_MS + 250) return;
-      const botAction = getBotAction(room.gameState);
-      if (botAction) {
-        try {
-          await this.dispatchAction(roomId, botAction);
-        } catch (err) {
-          console.warn('Bot action error:', err);
+  private watch(roomId: string): Watch {
+    const existing = this.watches.get(roomId);
+    if (existing) return existing;
+    let active = true, pending = false;
+    const watch: Watch = { rooms: new Set(), states: new Set(), errors: new Set(), stop: () => {} };
+    this.watches.set(roomId, watch);
+    const poll = async () => {
+      if (!active || pending) return;
+      if (watch.timer) clearTimeout(watch.timer);
+      pending = true;
+      try {
+        const room = await this.getRoom(roomId);
+        if (!room) throw new Error('This table no longer exists. Return to the lobby.');
+        if (!active) return;
+        watch.errors.forEach(cb => cb(null));
+        if (room.status === 'in_progress' && room.players.some(p => p.isBot)) {
+          // No process-local server timer: any connected player can keep bots
+          // moving across Vercel instances, even if the host disconnects.
+          await this.mutate('tick', { roomId, revision: room.revision }).catch(error => {
+            if (!(error instanceof MultiplayerError) || error.status !== 409) throw error;
+          });
         }
+      } catch (error) {
+        if (active) watch.errors.forEach(cb => cb(error instanceof Error ? error.message : 'Connection lost. Reconnecting…'));
+      } finally {
+        pending = false;
+        if (active) watch.timer = setTimeout(() => void poll(), 1500);
       }
-    }, 1200);
-
-    this.botLoops.set(roomId, interval);
+    };
+    const wake = () => { if (document.visibilityState === 'visible') void poll(); };
+    window.addEventListener('online', wake);
+    document.addEventListener('visibilitychange', wake);
+    watch.stop = () => {
+      active = false;
+      clearTimeout(watch.timer);
+      window.removeEventListener('online', wake);
+      document.removeEventListener('visibilitychange', wake);
+    };
+    void poll();
+    return watch;
   }
 
-  // Channel Broadcasting (Realtime & Local)
-  private getChannel(roomId: string): BroadcastChannel | null {
-    if (typeof window === 'undefined') return null;
-    if (!this.broadcastChannels.has(roomId)) {
-      const ch = new BroadcastChannel(`catan_channel_${roomId}`);
-      ch.onmessage = (event) => {
-        if (event.data?.type === 'ROOM_UPDATE') {
-          this.notifyRoomListeners(roomId, event.data.room);
-        } else if (event.data?.type === 'STATE_UPDATE') {
-          this.notifyStateListeners(roomId, event.data.gameState);
-        }
-      };
-      this.broadcastChannels.set(roomId, ch);
+  private release(roomId: string) {
+    const watch = this.watches.get(roomId);
+    if (watch && !watch.rooms.size && !watch.states.size && !watch.errors.size) {
+      watch.stop(); this.watches.delete(roomId); this.cache.delete(roomId);
     }
-    return this.broadcastChannels.get(roomId)!;
   }
-
-  private broadcastRoom(room: Room) {
-    const ch = this.getChannel(room.id);
-    ch?.postMessage({ type: 'ROOM_UPDATE', room });
-    this.notifyRoomListeners(room.id, room);
-  }
-
-  private broadcastGameState(roomId: string, gameState: GameState) {
-    const ch = this.getChannel(roomId);
-    ch?.postMessage({ type: 'STATE_UPDATE', gameState });
-    this.notifyStateListeners(roomId, gameState);
-  }
-
-  private notifyRoomListeners(roomId: string, room: Room) {
-    this.roomListeners.get(roomId)?.forEach((cb) => cb(room));
-  }
-
-  private notifyStateListeners(roomId: string, state: GameState) {
-    this.stateListeners.get(roomId)?.forEach((cb) => cb(state));
-  }
-
-  // Subscription methods for React hooks
   public subscribeToRoom(roomId: string, callback: (room: Room) => void): () => void {
-    if (!this.roomListeners.has(roomId)) {
-      this.roomListeners.set(roomId, new Set());
-    }
-    this.roomListeners.get(roomId)!.add(callback);
-    this.getChannel(roomId); // Ensure channel active
-
-    return () => {
-      this.roomListeners.get(roomId)?.delete(callback);
-    };
+    this.watch(roomId).rooms.add(callback);
+    return () => { this.watches.get(roomId)?.rooms.delete(callback); this.release(roomId); };
   }
-
   public subscribeToGameState(roomId: string, callback: (state: GameState) => void): () => void {
-    if (!this.stateListeners.has(roomId)) {
-      this.stateListeners.set(roomId, new Set());
-    }
-    this.stateListeners.get(roomId)!.add(callback);
-    this.getChannel(roomId); // Ensure channel active
-
-    return () => {
-      this.stateListeners.get(roomId)?.delete(callback);
-    };
+    this.watch(roomId).states.add(callback);
+    const cached = this.cache.get(roomId)?.gameState;
+    if (cached) callback(cached);
+    return () => { this.watches.get(roomId)?.states.delete(callback); this.release(roomId); };
+  }
+  public subscribeToConnection(roomId: string, callback: (error: string | null) => void): () => void {
+    this.watch(roomId).errors.add(callback);
+    return () => { this.watches.get(roomId)?.errors.delete(callback); this.release(roomId); };
   }
 }
 
-export const roomService = RoomService.getInstance();
+export const roomService = new RoomService();

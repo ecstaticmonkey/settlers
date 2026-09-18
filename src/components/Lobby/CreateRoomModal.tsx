@@ -14,7 +14,7 @@ interface CreateRoomModalProps {
     isPrivate: boolean;
     passCode?: string;
     color: PlayerColor;
-  }) => void;
+  }) => Promise<void>;
 }
 
 const COLORS: { value: PlayerColor; label: string; bg: string }[] = [
@@ -36,12 +36,18 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const [isPrivate, setIsPrivate] = useState(false);
   const [passCode, setPassCode] = useState('');
   const [color, setColor] = useState<PlayerColor>('red');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onCreateRoom({
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+    await onCreateRoom({
       name: name.trim() || 'Catan Match',
       maxPlayers,
       turnTimerSeconds,
@@ -50,6 +56,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       color,
     });
     onClose();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not create the room.'); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -70,6 +78,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="py-5 flex flex-col gap-4">
+          {error && <p className="notice notice-error" role="alert">{error}</p>}
+          <fieldset disabled={busy} className="contents">
           {/* Room Name */}
           <div>
             <label className="text-xs font-bold text-slate-300 block mb-1.5">Room Name</label>
@@ -164,6 +174,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             {isPrivate && (
               <input
                 type="password"
+                required
+                maxLength={128}
                 placeholder="Set Passcode"
                 value={passCode}
                 onChange={(e) => setPassCode(e.target.value)}
@@ -179,6 +191,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           >
             Create Room
           </button>
+          </fieldset>
         </form>
       </div>
     </div>
