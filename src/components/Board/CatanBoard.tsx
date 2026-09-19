@@ -124,12 +124,58 @@ export const CatanBoard: React.FC<CatanBoardProps> = ({
 
   const fallback = <FlatBoard {...{ board, phase, activePlayer, currentPlayerId, buildMode, lastPlacedVertexId, onSelectVertex, onSelectEdge, onSelectHex }} />;
   return <IslandCanvas board={board} fallback={fallback}>
-    {board.hexes.map(hex => <button key={`hex-${hex.id}`} data-world-x={hex.pixelX} data-world-z={hex.pixelY + 20} data-world-y=".27" className={`number-marker ${hex.pips === 5 ? 'number-hot' : ''} ${hex.hasRobber ? 'number-blocked' : ''} ${isRobberMoving && !hex.hasRobber ? 'robber-target' : ''}`} disabled={!isRobberMoving || hex.hasRobber} onClick={() => onSelectHex(hex.id)} aria-label={`${hex.terrain}, ${hex.numberToken || 'desert'}${hex.hasRobber ? ', robber' : ''}${isRobberMoving && !hex.hasRobber ? '. Move robber here' : ''}`}>
+    {board.hexes.map(hex => <button key={`hex-${hex.id}`} data-world-x={hex.pixelX} data-world-z={hex.pixelY + 20} data-world-y=".27" className={`number-marker ${hex.pips === 5 ? 'number-hot' : ''} ${hex.hasRobber ? 'number-blocked' : ''} ${isRobberMoving && !hex.hasRobber ? 'robber-target' : ''}`} disabled={!isRobberMoving || hex.hasRobber} onPointerDown={(e) => { if (isRobberMoving && !hex.hasRobber) e.stopPropagation(); }} onClick={() => onSelectHex(hex.id)} aria-label={`${hex.terrain}, ${hex.numberToken || 'desert'}${hex.hasRobber ? ', robber' : ''}${isRobberMoving && !hex.hasRobber ? '. Move robber here' : ''}`}>
       {hex.numberToken || <span className="desert-mark">✦</span>}<span className="number-pips">{'•'.repeat(hex.pips)}</span>
     </button>)}
     {board.ports.map(port => <span key={`port-${port.id}`} className="port-label" data-world-x={port.pixelX} data-world-z={port.pixelY} data-world-y=".05" title={port.label}>{port.resource ? <ResourceIcon resource={port.resource} size={11}/> : <Anchor size={11}/>} {port.ratio}:1</span>)}
-    {board.vertices.filter(v => validVertexIds.has(v.id) || upgradableCityVertexIds.has(v.id)).map(v => <button key={`vertex-${v.id}`} className={`placement-target ${upgradableCityVertexIds.has(v.id) ? 'city-target' : ''}`} data-world-x={v.pixelX} data-world-z={v.pixelY} data-world-y=".42" aria-label={`${upgradableCityVertexIds.has(v.id) ? 'Upgrade city' : 'Place settlement'} at intersection ${v.id + 1}`} onClick={() => onSelectVertex(v.id)}><span>+</span></button>)}
-    {board.edges.filter(e => validEdgeIds.has(e.id)).map(e => <button key={`edge-${e.id}`} className="placement-target road-target" data-world-x={(e.pixelX1 + e.pixelX2)/2} data-world-z={(e.pixelY1 + e.pixelY2)/2} data-world-y=".36" aria-label={`Place road on path ${e.id + 1}`} onClick={() => onSelectEdge(e.id)}><span>+</span></button>)}
+    {board.vertices.filter(vertex => validVertexIds.has(vertex.id) || upgradableCityVertexIds.has(vertex.id)).map(vertex => (
+      <button
+        key={`vertex-${vertex.id}`}
+        type="button"
+        className={`placement-target ${upgradableCityVertexIds.has(vertex.id) ? 'city-target' : ''}`}
+        data-world-x={vertex.pixelX}
+        data-world-z={vertex.pixelY}
+        data-world-y=".28"
+        aria-label={`${upgradableCityVertexIds.has(vertex.id) ? 'Upgrade city' : 'Place settlement'} at intersection ${vertex.id + 1}`}
+        onPointerDown={(evt) => {
+          evt.stopPropagation();
+        }}
+        onMouseDown={(evt) => {
+          evt.stopPropagation();
+        }}
+        onClick={(evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          onSelectVertex(vertex.id);
+        }}
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    ))}
+    {board.edges.filter(edge => validEdgeIds.has(edge.id)).map(edge => (
+      <button
+        key={`edge-${edge.id}`}
+        type="button"
+        className="placement-target road-target"
+        data-world-x={(edge.pixelX1 + edge.pixelX2)/2}
+        data-world-z={(edge.pixelY1 + edge.pixelY2)/2}
+        data-world-y=".28"
+        aria-label={`Place road on path ${edge.id + 1}`}
+        onPointerDown={(evt) => {
+          evt.stopPropagation();
+        }}
+        onMouseDown={(evt) => {
+          evt.stopPropagation();
+        }}
+        onClick={(evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          onSelectEdge(edge.id);
+        }}
+      >
+        <span aria-hidden="true">+</span>
+      </button>
+    ))}
     {board.vertices.filter(v => v.building).map(v => (
       <div key={`building-${v.id}`} className="building-marker-wrap" data-world-x={v.pixelX} data-world-z={v.pixelY} data-world-y=".58">
         {lastPlacedVertexId === v.id && <span className="building-vp-pill">+1 🏆</span>}

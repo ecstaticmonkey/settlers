@@ -132,9 +132,9 @@ export const FlatBoard: React.FC<CatanBoardProps> = ({
         <defs>
           {/* Oceanic background gradient */}
           <radialGradient id="oceanGradient" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#1e3a8a" />
-            <stop offset="60%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#090d16" />
+            <stop offset="0%" stopColor="#142c48" />
+            <stop offset="60%" stopColor="#0a1728" />
+            <stop offset="100%" stopColor="#040912" />
           </radialGradient>
 
           {/* Water wave ripple effect pattern */}
@@ -142,15 +142,15 @@ export const FlatBoard: React.FC<CatanBoardProps> = ({
             <path
               d="M 0 20 Q 10 15, 20 20 T 40 20"
               fill="none"
-              stroke="#38bdf8"
+              stroke="#60a5fa"
               strokeWidth="0.8"
-              opacity="0.12"
+              opacity="0.14"
             />
           </pattern>
         </defs>
 
         {/* Ocean Background & Boundary Circle */}
-        <circle cx="450" cy="400" r="320" fill="url(#oceanGradient)" stroke="#1e293b" strokeWidth="6" />
+        <circle cx="450" cy="400" r="320" fill="url(#oceanGradient)" stroke="#0f172a" strokeWidth="6" />
         <circle cx="450" cy="400" r="320" fill="url(#waves)" />
 
         {/* 1. Hexagons Layer */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { Dices } from 'lucide-react';
+import { Dices, ChevronUp, ChevronDown } from 'lucide-react';
 import { diceOrientation, makeDiceScene } from './dice-scene';
 import { simulateDiceRoll, ROLL_STEPS } from './dice-motion';
 import { DICE_ROLL_DURATION_MS } from '@/lib/catan/presentation';
@@ -23,6 +23,7 @@ export default function DiceTray({ dice, turn, canRoll, playerName, onRoll, onRo
   const previousRoll = useRef(`${turn}:${dice?.join(',') ?? ''}`);
   const [rolling, setRolling] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const onChange = useRef(onRollingChange);
   useEffect(() => { onChange.current = onRollingChange; }, [onRollingChange]);
 
@@ -106,13 +107,68 @@ export default function DiceTray({ dice, turn, canRoll, playerName, onRoll, onRo
   }, [first, second, turn]);
 
   const result = dice ? dice[0] + dice[1] : null;
-  return <section className={`dice-tray ${rolling ? 'dice-tray-rolling' : ''}`} aria-label="Dice tray">
-    <div className="dice-tray-heading"><span>THE DICE TABLE</span><span className="dice-tray-light" /></div>
-    <div className="dice-tray-canvas" ref={host} />
-    {failed && <div className="dice-tray-fallback" aria-hidden="true">{dice?.map((value, i) => <span key={i}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value - 1]}</span>) ?? '⚀ ⚀'}</div>}
-    <div className="dice-tray-footer">
-      <div role="status" aria-live="polite"><strong>{rolling ? 'Rolling…' : result !== null ? `${result} rolled` : 'Ready to roll'}</strong><small>{rolling ? 'The island holds its breath' : dice ? `${dice[0]} + ${dice[1]} · ${playerName}` : 'Two dice. New possibilities.'}</small></div>
-      {canRoll && !rolling ? <button className="tray-roll-button" onClick={onRoll} aria-label="Roll dice"><Dices size={17}/></button> : <span className="dice-tray-total" aria-hidden="true">{rolling ? '· ·' : result ?? '—'}</span>}
-    </div>
-  </section>;
+
+  if (isMinimized) {
+    return (
+      <section className="dice-tray dice-tray-compact" aria-label="Dice tray minimized">
+        <div className="dice-tray-compact-row">
+          <span className="dice-tray-compact-label">DICE:</span>
+          <strong className="dice-tray-compact-total">{result !== null ? result : '—'}</strong>
+          {canRoll && !rolling && (
+            <button className="tray-roll-button compact-roll-btn" onClick={onRoll} aria-label="Roll dice">
+              <Dices size={14}/>
+            </button>
+          )}
+          <button
+            type="button"
+            className="dice-tray-toggle-btn"
+            onClick={() => setIsMinimized(false)}
+            aria-label="Expand dice table"
+          >
+            <ChevronDown size={14}/>
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={`dice-tray ${rolling ? 'dice-tray-rolling' : ''}`} aria-label="Dice tray">
+      <div className="dice-tray-heading">
+        <span>THE DICE TABLE</span>
+        <div className="dice-tray-heading-actions">
+          <span className="dice-tray-light" />
+          <button
+            type="button"
+            className="dice-tray-toggle-btn"
+            onClick={() => setIsMinimized(true)}
+            aria-label="Minimize dice table"
+          >
+            <ChevronUp size={13}/>
+          </button>
+        </div>
+      </div>
+      <div className="dice-tray-canvas" ref={host} />
+      {failed && (
+        <div className="dice-tray-fallback" aria-hidden="true">
+          {dice?.map((value, i) => <span key={i}>{['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][value - 1]}</span>) ?? '⚀ ⚀'}
+        </div>
+      )}
+      <div className="dice-tray-footer">
+        <div role="status" aria-live="polite">
+          <strong>{rolling ? 'Rolling…' : result !== null ? `${result} rolled` : 'Ready to roll'}</strong>
+          <small>{rolling ? 'The island holds its breath' : dice ? `${dice[0]} + ${dice[1]} · ${playerName}` : 'Two dice. New possibilities.'}</small>
+        </div>
+        {canRoll && !rolling ? (
+          <button className="tray-roll-button" onClick={onRoll} aria-label="Roll dice">
+            <Dices size={17}/>
+          </button>
+        ) : (
+          <span className="dice-tray-total" aria-hidden="true">
+            {rolling ? '· ·' : result ?? '—'}
+          </span>
+        )}
+      </div>
+    </section>
+  );
 }

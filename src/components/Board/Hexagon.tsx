@@ -16,12 +16,12 @@ export const Hexagon: React.FC<HexagonProps> = ({
   onSelectHex,
 }) => {
   const pointsString = React.useMemo(() => {
-    // Generate the 6 corner points for SVG polygon
+    // Generate the 6 corner points for SVG polygon with a slight inset for spacing
     const corners: string[] = [];
     for (let i = 0; i < 6; i++) {
       const angleRad = (Math.PI / 180) * (60 * i + 30);
-      const x = hex.pixelX + 60 * Math.cos(angleRad);
-      const y = hex.pixelY + 60 * Math.sin(angleRad);
+      const x = hex.pixelX + 56.5 * Math.cos(angleRad);
+      const y = hex.pixelY + 56.5 * Math.sin(angleRad);
       corners.push(`${x},${y}`);
     }
     return corners.join(' ');
@@ -37,22 +37,22 @@ export const Hexagon: React.FC<HexagonProps> = ({
     switch (hex.terrain) {
       case 'forest':
         return (
-          <g opacity="0.35" fill="#143621">
+          <g opacity="0.35" fill="#13382c">
             <polygon points={`${cx},${cy - 12} ${cx - 9},${cy + 4} ${cx + 9},${cy + 4}`} />
             <polygon points={`${cx},${cy - 6} ${cx - 12},${cy + 12} ${cx + 12},${cy + 12}`} />
-            <rect x={cx - 2} y={cy + 12} width="4" height="6" fill="#0d2416" />
+            <rect x={cx - 2} y={cy + 12} width="4" height="6" fill="#0b241c" />
           </g>
         );
       case 'hills':
         return (
-          <g opacity="0.4" fill="#541b1f">
+          <g opacity="0.4" fill="#4a2930">
             <path d={`M ${cx - 18} ${cy + 14} Q ${cx - 8} ${cy - 8} ${cx + 2} ${cy + 14} Z`} />
             <path d={`M ${cx - 4} ${cy + 14} Q ${cx + 8} ${cy - 4} ${cx + 18} ${cy + 14} Z`} />
           </g>
         );
       case 'fields':
         return (
-          <g opacity="0.4" stroke="#d97706" strokeWidth="2" strokeLinecap="round">
+          <g opacity="0.4" stroke="#9e8e63" strokeWidth="2" strokeLinecap="round">
             <line x1={cx - 10} y1={cy + 12} x2={cx} y2={cy - 8} />
             <line x1={cx} y1={cy - 8} x2={cx - 6} y2={cy - 12} />
             <line x1={cx} y1={cy - 8} x2={cx + 6} y2={cy - 12} />
@@ -61,7 +61,7 @@ export const Hexagon: React.FC<HexagonProps> = ({
         );
       case 'pasture':
         return (
-          <g opacity="0.35" fill="#2d6a4f">
+          <g opacity="0.35" fill="#285848">
             {/* Gentle grass tufts */}
             <path d={`M ${cx - 12} ${cy + 10} Q ${cx - 6} ${cy} ${cx} ${cy + 10} Z`} />
             <path d={`M ${cx} ${cy + 10} Q ${cx + 6} ${cy + 2} ${cx + 12} ${cy + 10} Z`} />
@@ -69,15 +69,15 @@ export const Hexagon: React.FC<HexagonProps> = ({
         );
       case 'mountains':
         return (
-          <g opacity="0.4" fill="#343a40">
+          <g opacity="0.4" fill="#263238">
             <polygon points={`${cx - 14},${cy + 14} ${cx - 2},${cy - 12} ${cx + 10},${cy + 14}`} />
-            <polygon points={`${cx - 2},${cy - 12} ${cx + 2},${cy - 4} ${cx - 6},${cy - 4}`} fill="#f8f9fa" />
-            <polygon points={`${cx},${cy + 14} ${cx + 12},${cy - 6} ${cx + 20},${cy + 14}`} fill="#495057" />
+            <polygon points={`${cx - 2},${cy - 12} ${cx + 2},${cy - 4} ${cx - 6},${cy - 4}`} fill="#f1f5f9" />
+            <polygon points={`${cx},${cy + 14} ${cx + 12},${cy - 6} ${cx + 20},${cy + 14}`} fill="#475569" />
           </g>
         );
       case 'desert':
         return (
-          <g opacity="0.4" fill="#b08968">
+          <g opacity="0.4" fill="#78716c">
             <ellipse cx={cx} cy={cy + 8} rx="16" ry="6" />
           </g>
         );
@@ -97,12 +97,13 @@ export const Hexagon: React.FC<HexagonProps> = ({
         }
       }}
     >
-      {/* Hex background with subtle 3D border */}
+      {/* Hex background with black outline and spacing */}
       <polygon
         points={pointsString}
         fill={terrainConfig.bg}
-        stroke={isRobberMoveTarget ? '#38bdf8' : terrainConfig.stroke}
-        strokeWidth={isRobberMoveTarget ? 3.5 : 2}
+        stroke={isRobberMoveTarget ? '#38bdf8' : '#000000'}
+        strokeWidth={isRobberMoveTarget ? 3.5 : 2.5}
+        strokeLinejoin="round"
         className="transition-colors drop-shadow-sm"
       />
 

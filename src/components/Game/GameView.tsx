@@ -45,6 +45,7 @@ export const GameView: React.FC<GameViewProps> = ({
   const [isRolling, setIsRolling] = useState(false);
   const [rollPending, setRollPending] = useState(false);
   const rollInFlight = useRef(false);
+  const buildInFlight = useRef(false);
 
   // Modals state
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
@@ -53,19 +54,50 @@ export const GameView: React.FC<GameViewProps> = ({
   const [isRulebookOpen, setIsRulebookOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Turn timer countdown
-  const [remainingSeconds, setRemainingSeconds] = useState(gameState.turnTimeRemainingSeconds || 60);
+  const [pingMs, setPingMs] = useState(roomService.getPing());
+  const lastRobberHexId = useRef(initialState.board.robberHexId);
 
   useEffect(() => {
-    setRemainingSeconds(gameState.turnTimeRemainingSeconds || 60);
-  }, [gameState.turnTimeRemainingSeconds, gameState.turnNumber, gameState.phase, gameState.activePlayerIndex]);
+    const unsub = roomService.subscribeToPing(roomId, setPingMs);
+    return () => unsub();
+  }, [roomId]);
+
+  // Check if robber moves and play fire burn sound
+  useEffect(() => {
+    if (gameState.board.robberHexId !== lastRobberHexId.current) {
+      lastRobberHexId.current = gameState.board.robberHexId;
+      soundManager.playRobber();
+      soundManager.playFireBurn();
+    }
+  }, [gameState.board.robberHexId]);
+
+  // Turn timer countdown
+  const turnKey = `${gameState.turnNumber}-${gameState.phase}-${gameState.activePlayerIndex}`;
+  const [timerSnapshot, setTimerSnapshot] = useState({
+    key: turnKey,
+    seconds: gameState.turnTimeRemainingSeconds || 60,
+  });
+
+  const remainingSeconds =
+    timerSnapshot.key === turnKey
+      ? timerSnapshot.seconds
+      : gameState.turnTimeRemainingSeconds || 60;
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setRemainingSeconds((prev) => Math.max(0, prev - 1));
+      setTimerSnapshot((prev) => {
+        const currentSeconds =
+          prev.key === turnKey
+            ? prev.seconds
+            : gameState.turnTimeRemainingSeconds || 60;
+        return {
+          key: turnKey,
+          seconds: Math.max(0, currentSeconds - 1),
+        };
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [turnKey, gameState.turnTimeRemainingSeconds]);
 
   // Subscribe to real-time game state updates
   useEffect(() => {
@@ -100,6 +132,7 @@ export const GameView: React.FC<GameViewProps> = ({
           soundManager.playBuild();
         } else if (action.type === 'MOVE_ROBBER') {
           soundManager.playRobber();
+          soundManager.playFireBurn();
         } else if (action.type === 'CREATE_TRADE_OFFER' || action.type === 'CONFIRM_TRADE_OFFER') {
           soundManager.playTradeNotification();
         }
@@ -137,31 +170,56 @@ export const GameView: React.FC<GameViewProps> = ({
   };
 
   // Board selection handlers
-  const handleSelectVertex = (vertexId: number) => {
-    if (!isMyTurn || isRolling) return;
+  const handleSelectVertex = async (vertexId: number) => {
+    if (!isMyTurn || isRolling || buildInFlight.current) return;
 
     if (gameState.phase === 'SETUP_ROUND_1_SETTLEMENT' || gameState.phase === 'SETUP_ROUND_2_SETTLEMENT') {
-      handleDispatch({ type: 'PLACE_INITIAL_SETTLEMENT', vertexId });
+      buildInFlight.current = true;
+      try {
+        await handleDispatch({ type: 'PLACE_INITIAL_SETTLEMENT', vertexId });
+      } finally {
+        buildInFlight.current = false;
+      }
     } else if (gameState.phase === 'TURN_ACTIONS') {
       if (buildMode === 'settlement') {
-        handleDispatch({ type: 'BUILD_SETTLEMENT', vertexId });
-        setBuildMode(null);
+        buildInFlight.current = true;
+        try {
+          await handleDispatch({ type: 'BUILD_SETTLEMENT', vertexId });
+          setBuildMode(null);
+        } finally {
+          buildInFlight.current = false;
+        }
       } else if (buildMode === 'city') {
-        handleDispatch({ type: 'BUILD_CITY', vertexId });
-        setBuildMode(null);
+        buildInFlight.current = true;
+        try {
+          await handleDispatch({ type: 'BUILD_CITY', vertexId });
+          setBuildMode(null);
+        } finally {
+          buildInFlight.current = false;
+        }
       }
     }
   };
 
-  const handleSelectEdge = (edgeId: number) => {
-    if (!isMyTurn || isRolling) return;
+  const handleSelectEdge = async (edgeId: number) => {
+    if (!isMyTurn || isRolling || buildInFlight.current) return;
 
     if (gameState.phase === 'SETUP_ROUND_1_ROAD' || gameState.phase === 'SETUP_ROUND_2_ROAD') {
-      handleDispatch({ type: 'PLACE_INITIAL_ROAD', edgeId });
+      buildInFlight.current = true;
+      try {
+        await handleDispatch({ type: 'PLACE_INITIAL_ROAD', edgeId });
+      } finally {
+        buildInFlight.current = false;
+      }
     } else if (gameState.phase === 'TURN_ACTIONS' && buildMode === 'road') {
-      handleDispatch({ type: 'BUILD_ROAD', edgeId });
-      if (gameState.freeRoadsRemaining <= 1) {
-        setBuildMode(null);
+      buildInFlight.current = true;
+      try {
+        await handleDispatch({ type: 'BUILD_ROAD', edgeId });
+        if (gameState.freeRoadsRemaining <= 1) {
+          setBuildMode(null);
+        }
+      } finally {
+        buildInFlight.current = false;
       }
     }
   };
@@ -202,7 +260,7 @@ export const GameView: React.FC<GameViewProps> = ({
         />
       </div>
 
-      {/* TOP-LEFT: Floating Utility Toolbar (Settings, Rules, Fullscreen, Info) */}
+      {/* TOP-LEFT: Floating Utility Toolbar (Settings, Rules, Fullscreen, Info, Ping) */}
       <div className="hud-top-left-toolbar" role="toolbar" aria-label="Quick tools">
         <button
           type="button"
@@ -211,7 +269,7 @@ export const GameView: React.FC<GameViewProps> = ({
           title="Game Settings & Audio"
           aria-label="Open settings"
         >
-          <Settings size={18} />
+          <Settings size={17} />
         </button>
         <button
           type="button"
@@ -220,7 +278,7 @@ export const GameView: React.FC<GameViewProps> = ({
           title="Rulebook & Guide"
           aria-label="Open rulebook"
         >
-          <BookOpen size={18} />
+          <BookOpen size={17} />
         </button>
         <button
           type="button"
@@ -229,7 +287,7 @@ export const GameView: React.FC<GameViewProps> = ({
           title="Toggle Fullscreen"
           aria-label="Toggle fullscreen"
         >
-          <Maximize2 size={18} />
+          <Maximize2 size={17} />
         </button>
         <button
           type="button"
@@ -238,8 +296,13 @@ export const GameView: React.FC<GameViewProps> = ({
           title={`Table ${roomCode} · Turn ${gameState.turnNumber}`}
           aria-label="Table info"
         >
-          <Info size={18} />
+          <Info size={17} />
         </button>
+        <div className="hud-conn-badge" title={`Live server latency: ${pingMs}ms · Synced`}>
+          <span className={`hud-conn-dot ${pingMs < 80 ? 'hud-conn-dot-fast' : 'hud-conn-dot-lag'}`} />
+          <span>{pingMs < 80 ? 'Fast' : 'Online'}</span>
+          <span className="hud-conn-ping">{pingMs}ms</span>
+        </div>
       </div>
 
       {/* TOP-CENTER: Floating Objective Ribbon Banner */}

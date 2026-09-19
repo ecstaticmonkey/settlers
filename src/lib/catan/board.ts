@@ -37,20 +37,20 @@ export const TERRAIN_RESOURCES: Record<HexTerrain, Resource | null> = {
 };
 
 export const TERRAIN_COLORS: Record<HexTerrain, { bg: string; stroke: string; label: string }> = {
-  forest: { bg: '#2d6a4f', stroke: '#1b4332', label: 'Forest (Lumber)' },
-  pasture: { bg: '#95d5b2', stroke: '#52b788', label: 'Pasture (Wool)' },
-  fields: { bg: '#ffb703', stroke: '#fb8500', label: 'Fields (Grain)' },
-  hills: { bg: '#bc4749', stroke: '#6a040f', label: 'Hills (Brick)' },
-  mountains: { bg: '#6c757d', stroke: '#495057', label: 'Mountains (Ore)' },
-  desert: { bg: '#e9d8a6', stroke: '#d4a373', label: 'Desert' },
+  forest: { bg: '#548774', stroke: '#000000', label: 'Forest (Lumber)' },
+  pasture: { bg: '#9ed6be', stroke: '#000000', label: 'Pasture (Wool)' },
+  fields: { bg: '#ded3a6', stroke: '#000000', label: 'Fields (Grain)' },
+  hills: { bg: '#be8888', stroke: '#000000', label: 'Hills (Brick)' },
+  mountains: { bg: '#8ca1b5', stroke: '#000000', label: 'Mountains (Ore)' },
+  desert: { bg: '#dbd8cb', stroke: '#000000', label: 'Desert' },
 };
 
 export const RESOURCE_COLORS: Record<Resource, string> = {
-  wood: '#2d6a4f',
-  sheep: '#74c69d',
-  wheat: '#ffb703',
-  brick: '#bc4749',
-  ore: '#6c757d',
+  wood: '#548774',
+  sheep: '#86c2a6',
+  wheat: '#ded3a6',
+  brick: '#be8888',
+  ore: '#8ca1b5',
 };
 
 // 19 Hex layout definition: row-by-row (3, 4, 5, 4, 3)

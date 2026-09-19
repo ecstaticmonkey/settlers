@@ -217,5 +217,30 @@ test('SQL changes roll back atomically, deny public writes/reads, and migration 
   await assert.rejects(database.db.query('SELECT public.catan_commit_room($1::jsonb,$2)', [JSON.stringify(room), room.revision]), /permission denied/);
   await database.db.exec('RESET ROLE');
   await database.db.exec(await readFile('supabase/migrations/20260919000000_shared_multiplayer.sql', 'utf8'));
+  await database.db.exec(await readFile('supabase/migrations/20260919000001_fix_revision_conflict.sql', 'utf8'));
   assert.deepEqual(await host.room(room.id), room);
 });
+
+test('catan_commit_room returns conflict object cleanly on stale revision without SQL exception', async () => {
+  const host = await new Browser().session();
+  const room = await host.mutate('create', { name: 'Clean Conflict', playerName: 'Host' });
+  const { rows } = await database.db.query<{ catan_commit_room: { conflict?: boolean } }>(
+    'SELECT public.catan_commit_room($1::jsonb, $2::bigint) AS catan_commit_room',
+    [JSON.stringify(room), 9999]
+  );
+  assert.equal(rows[0].catan_commit_room.conflict, true);
+});
+
+test('conditional room polling with since parameter returns unmodified when revision matches', async () => {
+  const host = await new Browser().session();
+  const room = await host.mutate('create', { name: 'Poll Optimization', playerName: 'Host' });
+  const unmodifiedRes = await host.request(undefined, `?room=${room.id}&since=${room.revision}`);
+  assert.equal(unmodifiedRes.status, 200);
+  assert.equal(unmodifiedRes.data.unmodified, true);
+  assert.equal(unmodifiedRes.data.revision, room.revision);
+
+  const staleSinceRes = await host.request(undefined, `?room=${room.id}&since=${room.revision - 1}`);
+  assert.equal(staleSinceRes.status, 200);
+  assert.equal(staleSinceRes.data.room.id, room.id);
+});
+

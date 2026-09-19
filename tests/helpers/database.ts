@@ -9,7 +9,7 @@ export async function testDatabase() {
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE SCHEMA auth; CREATE TABLE auth.users(id UUID PRIMARY KEY);
     GRANT USAGE ON SCHEMA public TO service_role, anon, authenticated;`);
-  for (const file of ['20260918000000_catan_schema.sql', '20260919000000_shared_multiplayer.sql']) {
+  for (const file of ['20260918000000_catan_schema.sql', '20260919000000_shared_multiplayer.sql', '20260919000001_fix_revision_conflict.sql']) {
     await db.exec(await readFile(`supabase/migrations/${file}`, 'utf8'));
   }
   const fetchDatabase: typeof fetch = async (input, init) => {

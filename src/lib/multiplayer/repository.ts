@@ -41,6 +41,15 @@ export async function listRooms(actorId: string): Promise<Room[]> {
   return (data as unknown as RoomRow[]).map(decode);
 }
 
+export async function getRoomRevision(idOrCode: string): Promise<{ id: string; revision: number } | null> {
+  const isId = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(idOrCode);
+  const { data, error } = await createAdminClient().from('catan_rooms').select('id,revision')
+    .eq(isId ? 'id' : 'room_code', isId ? idOrCode : idOrCode.trim().toUpperCase()).maybeSingle();
+  if (error) databaseError(error);
+  if (!data) return null;
+  return { id: (data as { id: string }).id, revision: Number((data as { revision: number }).revision) };
+}
+
 export async function loadRoom(idOrCode: string): Promise<{ room: Room; passcodeHash: string | null } | null> {
   const isId = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(idOrCode);
   // Embedded relations are read in the same Postgres statement/snapshot.
@@ -60,6 +69,9 @@ export async function saveRoom(room: Room, expectedRevision: number | null, pass
     if (error.code === '40001') throw new MultiplayerError('The table changed. Your view has refreshed; please try your move again.', 409);
     if (error.code === '23505' && expectedRevision === null) throw new MultiplayerError('Room code collision. Please create the room again.', 409);
     databaseError(error);
+  }
+  if ((data as { conflict?: boolean } | null)?.conflict) {
+    throw new MultiplayerError('The table changed. Your view has refreshed; please try your move again.', 409);
   }
   return { ...room, revision: data.revision, updatedAt: Date.parse(data.updated_at) };
 }

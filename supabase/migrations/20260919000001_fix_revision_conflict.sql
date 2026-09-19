@@ -1,19 +1,5 @@
--- Run after 20260918000000_catan_schema.sql. Existing tables/data are retained.
-BEGIN;
-
-ALTER TABLE public.catan_rooms ADD COLUMN IF NOT EXISTS revision BIGINT NOT NULL DEFAULT 0;
--- Bot IDs are strings, so a winning bot cannot be stored in a UUID column.
-ALTER TABLE public.catan_rooms ALTER COLUMN winner_id TYPE TEXT USING winner_id::TEXT;
-CREATE INDEX IF NOT EXISTS catan_room_players_player_idx ON public.catan_room_players(player_id);
-
--- All room access goes through the server API, which verifies a signed player
--- session and enforces membership/host/turn permissions. The public key must not
--- allow clients to bypass those checks or read private passwords/game state.
-REVOKE ALL ON public.catan_rooms, public.catan_room_players, public.catan_game_states, public.catan_game_actions FROM anon, authenticated;
-REVOKE ALL ON SEQUENCE public.catan_game_actions_id_seq FROM anon, authenticated;
-GRANT ALL ON public.catan_rooms, public.catan_room_players, public.catan_game_states, public.catan_game_actions TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE public.catan_game_actions_id_seq TO service_role;
-
+-- Fix optimistic revision conflict to return conflict status instead of raising 40001 exception.
+-- This prevents Postgres error log spam in Supabase while maintaining atomic version checking.
 CREATE OR REPLACE FUNCTION public.catan_commit_room(
   p_room JSONB,
   p_expected_revision BIGINT,
@@ -74,4 +60,8 @@ $$;
 REVOKE ALL ON FUNCTION public.catan_commit_room(JSONB, BIGINT, TEXT, JSONB) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.catan_commit_room(JSONB, BIGINT, TEXT, JSONB) TO service_role;
 
-COMMIT;
+CREATE INDEX IF NOT EXISTS catan_game_actions_room_id_idx ON public.catan_game_actions(room_id);
+CREATE INDEX IF NOT EXISTS catan_profiles_user_id_idx ON public.catan_profiles(user_id);
+CREATE INDEX IF NOT EXISTS catan_rooms_status_created_at_idx ON public.catan_rooms(status, is_private, created_at DESC);
+CREATE INDEX IF NOT EXISTS catan_room_players_room_id_idx ON public.catan_room_players(room_id);
+

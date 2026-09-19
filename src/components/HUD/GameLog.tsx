@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { GameLogEvent } from '@/lib/catan/types';
-import { Dices, Hammer, ArrowLeftRight, Flag, ChevronUp, ChevronDown, BookOpen } from 'lucide-react';
+import { Dices, Hammer, ArrowLeftRight, Flag, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface GameLogProps {
   logs: GameLogEvent[];

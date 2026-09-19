@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listRooms, loadRoom, saveRoom } from '@/lib/multiplayer/repository';
+import { getRoomRevision, listRooms, loadRoom, saveRoom } from '@/lib/multiplayer/repository';
 import { hashPasscode, newSession, readSession, requirePlayer, SESSION_COOKIE, SESSION_SECONDS, verifyPasscode } from '@/lib/multiplayer/session';
 import { MultiplayerError, type CreateRoomOptions } from '@/lib/multiplayer/types';
 import { integer, object, parseAction, text } from '@/lib/multiplayer/validation';
@@ -27,7 +27,17 @@ export async function GET(request: NextRequest) {
     const actorId = requirePlayer(request);
     const key = request.nextUrl.searchParams.get('room');
     if (!key) return json({ rooms: await listRooms(actorId) });
-    const loaded = await loadRoom(text(key, 'room code'));
+    const normalizedKey = text(key, 'room code');
+    const sinceParam = request.nextUrl.searchParams.get('since');
+    const since = sinceParam !== null ? parseInt(sinceParam, 10) : null;
+    if (since !== null && !isNaN(since)) {
+      const rev = await getRoomRevision(normalizedKey);
+      if (!rev) throw new MultiplayerError('Room not found', 404);
+      if (rev.revision <= since) {
+        return json({ unmodified: true, revision: rev.revision });
+      }
+    }
+    const loaded = await loadRoom(normalizedKey);
     if (!loaded) throw new MultiplayerError('Room not found', 404);
     rules.member(loaded.room, actorId);
     return json({ room: loaded.room });
@@ -89,6 +99,10 @@ export async function POST(request: NextRequest) {
       }
       try { return json({ room: await saveRoom(room, revision, undefined, action) }); }
       catch (error) {
+        if (operation === 'tick' && error instanceof MultiplayerError && error.status === 409) {
+          const fresh = await loadRoom(key);
+          return json({ room: fresh ? fresh.room : room });
+        }
         if (!(error instanceof MultiplayerError) || error.status !== 409 || operation === 'action' || operation === 'tick' || attempt === 3) throw error;
       }
     }

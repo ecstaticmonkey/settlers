@@ -131,6 +131,80 @@ class SoundManager {
     osc.stop(ctx.currentTime + 0.25);
   }
 
+  public playFireBurn() {
+    if (this.isMuted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    // 1. Low rumbling flame roar
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(55, ctx.currentTime + 0.6);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(220, ctx.currentTime);
+    filter.frequency.linearRampToValueAtTime(140, ctx.currentTime + 0.6);
+
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + 0.65);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.65);
+
+    // 2. Procedural flame crackle / spark pops
+    const bufferSize = Math.floor(ctx.sampleRate * 0.5);
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      // Sparse crackle impulses
+      output[i] = Math.random() < 0.03 ? (Math.random() * 2 - 1) * 0.9 : (Math.random() * 2 - 1) * 0.05;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(1800, ctx.currentTime);
+    noiseFilter.Q.setValueAtTime(3.0, ctx.currentTime);
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.16, ctx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.55);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.start();
+    noise.stop(ctx.currentTime + 0.55);
+  }
+
+  public playShipBell() {
+    if (this.isMuted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    // Dual brass bell chime
+    [1760, 2640].forEach(freq => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.8);
+    });
+  }
+
   public playVictory() {
     if (this.isMuted) return;
     const ctx = this.getContext();

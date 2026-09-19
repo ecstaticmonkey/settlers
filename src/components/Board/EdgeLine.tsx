@@ -11,11 +11,11 @@ interface EdgeLineProps {
 }
 
 const COLOR_MAP: Record<PlayerColor, { fill: string; stroke: string }> = {
-  red: { fill: '#dc2626', stroke: '#991b1b' },
-  blue: { fill: '#2563eb', stroke: '#1e40af' },
-  orange: { fill: '#ea580c', stroke: '#9a3412' },
-  white: { fill: '#f8fafc', stroke: '#94a3b8' },
-  green: { fill: '#16a34a', stroke: '#15803d' },
+  red: { fill: '#881337', stroke: '#000000' },
+  blue: { fill: '#1e3a8a', stroke: '#000000' },
+  orange: { fill: '#7c2d12', stroke: '#000000' },
+  white: { fill: '#e2e8f0', stroke: '#000000' },
+  green: { fill: '#064e3b', stroke: '#000000' },
 };
 
 export const EdgeLine: React.FC<EdgeLineProps> = ({
@@ -53,7 +53,17 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
 
       {/* If road is built */}
       {isOccupied && road && (
-        <g filter="drop-shadow(0 2px 2px rgba(0,0,0,0.35))">
+        <g filter="drop-shadow(0 2px 2px rgba(0,0,0,0.45))">
+          {/* Black outer outline */}
+          <line
+            x1={edge.pixelX1}
+            y1={edge.pixelY1}
+            x2={edge.pixelX2}
+            y2={edge.pixelY2}
+            stroke="#000000"
+            strokeWidth="11"
+            strokeLinecap="round"
+          />
           {/* Main road body */}
           <line
             x1={edge.pixelX1}
@@ -61,19 +71,19 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
             x2={edge.pixelX2}
             y2={edge.pixelY2}
             stroke={COLOR_MAP[road.playerColor].fill}
-            strokeWidth="7.5"
+            strokeWidth="7"
             strokeLinecap="round"
           />
-          {/* Inner highlight line */}
+          {/* Inner subtle highlight line */}
           <line
             x1={edge.pixelX1}
             y1={edge.pixelY1}
             x2={edge.pixelX2}
             y2={edge.pixelY2}
             stroke="#ffffff"
-            strokeWidth="1.5"
+            strokeWidth="1.2"
             strokeLinecap="round"
-            opacity="0.5"
+            opacity="0.35"
           />
         </g>
       )}

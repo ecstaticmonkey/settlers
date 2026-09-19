@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bot, Layers, Shield, Trophy, Home, Route } from 'lucide-react';
+import { Bot, Layers, Trophy, Home, Route } from 'lucide-react';
 import { Player } from '@/lib/catan/types';
 import { PIECE_COLORS } from '../Board/island-scene';
 
@@ -32,7 +32,7 @@ export function PlayerRoster({
         const totalDevCards =
           Object.values(p.devCards).reduce((a, b) => a + b, 0) +
           Object.values(p.boughtDevCardsThisTurn).reduce((a, b) => a + b, 0);
-        const playerColor = PIECE_COLORS[p.color] || '#cb5a34';
+        const playerColor = PIECE_COLORS[p.color] || '#881337';
 
         return (
           <div

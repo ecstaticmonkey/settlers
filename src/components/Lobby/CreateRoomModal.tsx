@@ -18,11 +18,11 @@ interface CreateRoomModalProps {
 }
 
 const COLORS: { value: PlayerColor; label: string; bg: string }[] = [
-  { value: 'red', label: 'Red', bg: 'bg-red-600' },
-  { value: 'blue', label: 'Blue', bg: 'bg-blue-600' },
-  { value: 'orange', label: 'Orange', bg: 'bg-orange-600' },
-  { value: 'white', label: 'White', bg: 'bg-slate-300' },
-  { value: 'green', label: 'Green', bg: 'bg-emerald-600' },
+  { value: 'red', label: 'Red', bg: 'bg-[#881337]' },
+  { value: 'blue', label: 'Blue', bg: 'bg-[#1e3a8a]' },
+  { value: 'orange', label: 'Orange', bg: 'bg-[#7c2d12]' },
+  { value: 'white', label: 'White', bg: 'bg-[#e2e8f0]' },
+  { value: 'green', label: 'Green', bg: 'bg-[#064e3b]' },
 ];
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({

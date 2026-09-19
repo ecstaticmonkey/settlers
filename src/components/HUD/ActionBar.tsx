@@ -87,7 +87,7 @@ export function ActionBar({
           style={{ backgroundColor: PIECE_COLORS[activePlayer.color] }}
           aria-hidden="true"
         >
-          {phase === 'TURN_ROLL' ? <Dices size={18} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
+          {phase === 'TURN_ROLL' ? <Dices size={15} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
         </div>
         <div className="turn-pill-info">
           <span className="turn-pill-title">{turnStatus}</span>
@@ -111,7 +111,7 @@ export function ActionBar({
           title="Trade with players"
           aria-label="Trade with players"
         >
-          <ArrowLeftRight size={22} />
+          <ArrowLeftRight size={20} />
           <span className="hud-action-label">Trade</span>
         </button>
 
@@ -124,7 +124,7 @@ export function ActionBar({
           title="Development cards (Play or Buy)"
           aria-label="Development cards"
         >
-          <Layers size={22} />
+          <Layers size={20} />
           <span className="hud-action-label">Cards</span>
         </button>
 
@@ -145,7 +145,7 @@ export function ActionBar({
               aria-label={`Build road (${supply} left)`}
             >
               <span className="hud-badge">{freeRoadsRemaining > 0 ? `${freeRoadsRemaining}*` : supply}</span>
-              <Route size={22} />
+              <Route size={20} />
               <span className="hud-action-label">Road</span>
             </button>
           );
@@ -166,7 +166,7 @@ export function ActionBar({
               aria-label={`Build settlement (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Home size={22} />
+              <Home size={20} />
               <span className="hud-action-label">Settle</span>
             </button>
           );
@@ -187,7 +187,7 @@ export function ActionBar({
               aria-label={`Build city (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Castle size={22} />
+              <Castle size={20} />
               <span className="hud-action-label">City</span>
             </button>
           );
@@ -203,7 +203,7 @@ export function ActionBar({
             title="Roll the dice"
             aria-label="Roll dice"
           >
-            <Dices size={22} className={rolling ? 'animate-spin' : ''} />
+            <Dices size={20} className={rolling ? 'animate-spin' : ''} />
             <span className="hud-action-label">{rolling ? 'Rolling…' : 'Roll'}</span>
           </button>
         ) : actions ? (
@@ -217,7 +217,7 @@ export function ActionBar({
             title="End your turn"
             aria-label="End turn"
           >
-            <ArrowRight size={22} />
+            <ArrowRight size={20} />
             <span className="hud-action-label">Pass</span>
           </button>
         ) : setup && isMyTurn ? (
@@ -227,7 +227,7 @@ export function ActionBar({
             title={`Click on a glowing spot on the island to place your ${setupRoad ? 'road' : 'settlement'}`}
             aria-label="Place on board"
           >
-            <MapPin size={22} className="animate-bounce" />
+            <MapPin size={20} className="animate-bounce" />
             <span className="hud-action-label">Place</span>
           </button>
         ) : (

@@ -47,9 +47,9 @@ body {
 .theater-active .turn-banner { background: #152c45e6; border-color: #7197b755; box-shadow: 0 8px 28px #02081366; }
 .theater-active .resource-hand { background: #142a42e6; border-color: #8aacce44; box-shadow: 0 8px 28px #02081366; }
 .theater-active .action-bar { background: #17324ee8; border-color: #76ccb640; box-shadow: 0 8px 32px #02081388; }
-.number-marker { background: #fff1cf; border-color: #ffe9b8; color: #303c2b; box-shadow: 0 3px 0 #8d7647,0 4px 8px #05122166; }
-.number-hot { background: #ffe4a2; color: #c63c20; border-color: #fbc674; }
-.port-label { background: #fff0d4ed; border-color: #e6cc92; color: #254c51; }
+.number-marker { background: #f1f5f9; border: 1.5px solid #000000; color: #0f172a; box-shadow: 0 3px 0 #000000,0 4px 8px #05122166; }
+.number-hot { background: #fee2e2; color: #881337; border-color: #000000; }
+.port-label { background: #f1f5f9ed; border-color: #000000; color: #0f172a; }
 .player-tile { background: #142a42; border-color: #8aacce2e; box-shadow: 0 3px 10px #0208131a; }
 .player-active { background: #1d3a51; border-color: #76ccb680; box-shadow: inset 0 0 22px #71cfab09,0 3px 12px #030b1826; }
 .player-avatar { border-color: #e4eeff33; color: #fff9e9; text-shadow: 0 1px 3px #09213c99; }
@@ -121,7 +121,7 @@ body {
 
 /* Night mode overrides for mirrored HUD elements */
 .catan-board-viewport {
-  background: radial-gradient(ellipse at 53% 44%, #204e63 0%, #143249 45%, #0d2137 80%, #09172a 100%);
+  background: radial-gradient(ellipse at 53% 44%, #18384d 0%, #0f2434 45%, #081622 80%, #040d16 100%);
 }
 
 .game-hud-fullbleed .camera-hint,
@@ -141,6 +141,21 @@ body {
   background: rgba(30, 60, 95, 0.95);
   border-color: rgba(179, 208, 237, 0.30);
   color: #ffffff;
+}
+
+.hud-conn-badge {
+  background: rgba(18, 38, 62, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(179, 208, 237, 0.16);
+  color: #d8e6f3;
+  box-shadow: 0 4px 14px rgba(2, 8, 19, 0.35);
+}
+
+.dice-tray-compact {
+  background: rgba(11, 50, 46, 0.95) !important;
+  border-color: #69a98b66 !important;
+  box-shadow: 0 4px 14px rgba(2, 11, 30, 0.45) !important;
 }
 
 .hud-ribbon-banner {
@@ -338,3 +353,34 @@ body {
   border-color: #58a6ff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
+
+.placement-target {
+  background: rgba(20, 44, 67, 0.92);
+  border-color: #82bbcf;
+  color: #b4e5dd;
+  box-shadow: 0 0 0 2px rgba(130, 187, 207, 0.35), 0 0 14px rgba(118, 204, 182, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.placement-target:hover,
+.placement-target:focus-visible {
+  background: #1e4566;
+  border-color: #f3ca76;
+  color: #ffe0a0;
+  box-shadow: 0 0 0 2px rgba(243, 202, 118, 0.6), 0 0 22px rgba(243, 202, 118, 0.95), 0 0 30px rgba(235, 97, 56, 0.6), 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+
+.city-target {
+  border-color: #f3ca76;
+  background: rgba(85, 55, 20, 0.92);
+  color: #ffe0a0;
+  box-shadow: 0 0 0 2px rgba(243, 202, 118, 0.4), 0 0 14px rgba(243, 202, 118, 0.75), 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.city-target:hover,
+.city-target:focus-visible {
+  border-color: #ffffff;
+  background: #9a4c1e;
+  color: #fff2cc;
+  box-shadow: 0 0 0 2px #f3ca76, 0 0 24px rgba(243, 202, 118, 1), 0 0 34px rgba(241, 107, 67, 0.8), 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+
