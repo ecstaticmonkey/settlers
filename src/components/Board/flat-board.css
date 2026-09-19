@@ -1,0 +1,40 @@
+/* The illustrated table uses the site's navy sea and Geist type, with warm
+   physical materials for the playing surface. All rules stay inside 2D view. */
+.flat-board-container {
+  --flat-sand: #dfbd78;
+  --flat-sand-edge: #b58e50;
+  --flat-sand-light: #f4dda0;
+  --flat-ivory: #fbf4df;
+  --flat-token-ink: #214f3a;
+  --flat-hot: #ba3f35;
+  background: radial-gradient(ellipse at 50% 45%, #195879 0%, #124461 56%, var(--paper, #0c2744) 100%);
+  font-family: var(--font-geist-sans), sans-serif;
+}
+.flat-board-container .flat-board-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+}
+.flat-hex { outline: none; }
+.flat-hex-target { cursor: pointer; }
+.flat-hex-target:hover > polygon,
+.flat-hex-target:focus-visible > polygon { filter: brightness(1.12); }
+.flat-hex-target:focus-visible .flat-hex-focus { stroke: var(--flat-ivory); stroke-dasharray: none; }
+.flat-placement { outline: none; cursor: pointer; }
+.flat-placement .flat-placement-ring { transition: opacity 150ms ease, stroke-width 150ms ease; }
+.flat-placement:hover .flat-placement-ring,
+.flat-placement:focus-visible .flat-placement-ring { opacity: 1; stroke: var(--flat-ivory); stroke-width: 3; }
+.flat-placement:focus-visible .flat-road-ghost { stroke: var(--flat-ivory); opacity: 1; }
+.flat-number, .flat-port { font-family: var(--font-geist-sans), sans-serif; }
+.flat-board-root .board-camera-bar { flex-shrink: 0; width: 100%; }
+.flat-board-root .camera-mode-btn {
+  color: var(--sea) !important;
+  border-color: var(--line) !important;
+  background: var(--surface) !important;
+}
+.flat-board-root .camera-mode-btn:hover { color: var(--ink) !important; }
+@media (prefers-reduced-motion: reduce) {
+  .flat-board-container *, .flat-board-container *::before { animation: none !important; transition: none !important; }
+}

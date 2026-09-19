@@ -1,21 +1,23 @@
 import * as THREE from 'three';
 import { GameBoard, PlayerColor } from '@/lib/catan/types';
 
+import { TERRAIN_TOKENS, PLAYER_TOKENS } from '@/lib/catan/tokens';
+
 export const PIECE_COLORS: Record<PlayerColor, string> = {
-  red: '#881337',
-  blue: '#1e3a8a',
-  orange: '#7c2d12',
-  white: '#e2e8f0',
-  green: '#064e3b',
+  red: PLAYER_TOKENS.red.fill,
+  blue: PLAYER_TOKENS.blue.fill,
+  orange: PLAYER_TOKENS.orange.fill,
+  white: PLAYER_TOKENS.white.fill,
+  green: PLAYER_TOKENS.green.fill,
 };
 
 const TERRAIN = {
-  forest: '#4d8a74',
-  pasture: '#8ecbb1',
-  fields: '#dad0a4',
-  hills: '#b57d81',
-  mountains: '#7b94ad',
-  desert: '#d7d3c5',
+  forest: TERRAIN_TOKENS.forest.color3D,
+  pasture: TERRAIN_TOKENS.pasture.color3D,
+  fields: TERRAIN_TOKENS.fields.color3D,
+  hills: TERRAIN_TOKENS.hills.color3D,
+  mountains: TERRAIN_TOKENS.mountains.color3D,
+  desert: TERRAIN_TOKENS.desert.color3D,
 };
 
 export const world = (x: number, z: number, y = .28) => new THREE.Vector3((x - 450) / 60, y, (z - 400) / 60);
@@ -24,68 +26,89 @@ export function makeIsland(board: GameBoard, preview = false) {
   const root = new THREE.Group();
   const materials = new Map<string, THREE.MeshStandardMaterial>();
   const material = (color: string) => {
-    if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({ color, roughness: .92, flatShading: true }));
+    if (!materials.has(color)) materials.set(color, new THREE.MeshStandardMaterial({ color, roughness: .85, flatShading: true }));
     return materials.get(color)!;
   };
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
 
-  function mesh(geometry: THREE.BufferGeometry, color: string, x: number, y: number, z: number, parent: THREE.Group = root) {
-    const m = new THREE.Mesh(geometry, material(color)); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m;
+  function mesh(geometry: THREE.BufferGeometry, color: string, x: number, y: number, z: number, parent: THREE.Group = root, castShadow = true, receiveShadow = true) {
+    const m = new THREE.Mesh(geometry, material(color));
+    m.position.set(x, y, z);
+    m.castShadow = castShadow;
+    m.receiveShadow = receiveShadow;
+    parent.add(m);
+    return m;
   }
-  const box = (w: number, h: number, d: number, color: string, x: number, y: number, z: number, parent = root) => mesh(new THREE.BoxGeometry(w, h, d), color, x, y, z, parent);
-  const cone = (r: number, h: number, color: string, x: number, y: number, z: number, sides = 5, parent = root) => mesh(new THREE.ConeGeometry(r, h, sides), color, x, y, z, parent);
-  const sphere = (r: number, color: string, x: number, y: number, z: number, parent = root) => mesh(new THREE.IcosahedronGeometry(r, 0), color, x, y, z, parent);
+  const box = (w: number, h: number, d: number, color: string, x: number, y: number, z: number, parent = root, castShadow = true, receiveShadow = true) => mesh(new THREE.BoxGeometry(w, h, d), color, x, y, z, parent, castShadow, receiveShadow);
+  const cone = (r: number, h: number, color: string, x: number, y: number, z: number, sides = 5, parent = root, castShadow = true, receiveShadow = true) => mesh(new THREE.ConeGeometry(r, h, sides), color, x, y, z, parent, castShadow, receiveShadow);
+  const sphere = (r: number, color: string, x: number, y: number, z: number, parent = root, castShadow = true, receiveShadow = true) => mesh(new THREE.IcosahedronGeometry(r, 0), color, x, y, z, parent, castShadow, receiveShadow);
 
-  const sea = mesh(new THREE.CylinderGeometry(6.1, 6.25, .16, 64), '#104b61', 0, -.5, 0); sea.receiveShadow = true;
-  mesh(new THREE.CylinderGeometry(5.98, 6.1, .1, 64), '#17617b', 0, -.39, 0);
+  const sea = mesh(new THREE.CylinderGeometry(6.3, 6.45, .16, 64), '#0369a1', 0, -.5, 0, root, false, true);
+  mesh(new THREE.CylinderGeometry(6.15, 6.3, .1, 64), '#0284c7', 0, -.39, 0, root, false, true);
   for (let i = 0; i < 3; i++) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(5.75 + i * .38, 5.77 + i * .38, 96), new THREE.MeshBasicMaterial({ color: '#82c8cf', transparent: true, opacity: .25 - i * .05, side: THREE.DoubleSide }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = -.325; root.add(ring);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(5.95 + i * .38, 5.98 + i * .38, 96), new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: .35 - i * .08, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = -.31; root.add(ring);
   }
 
   board.hexes.forEach(h => {
     const p = world(h.pixelX, h.pixelY); const x = p.x, z = p.z;
-    // Spaced out hex foundation with cooler slate stone
-    mesh(new THREE.CylinderGeometry(.925, .90, .4, 6), '#4a5568', x, -.1, z);
-    // Black outline casing for the hex
-    mesh(new THREE.CylinderGeometry(.935, .935, .13, 6), '#000000', x, .155, z);
-    // Top terrain tile slightly inset to leave crisp black edge
-    const tile = mesh(new THREE.CylinderGeometry(.92, .925, .12, 6), TERRAIN[h.terrain], x, .16, z);
-    const hexEdges = new THREE.LineSegments(new THREE.EdgesGeometry(tile.geometry, 15), lineMat);
-    tile.add(hexEdges);
+    // Warm golden sand bevel foundation beneath each hex tile touching the water
+    mesh(new THREE.CylinderGeometry(1.0, .96, .34, 6), '#dfba73', x, -.05, z, root, false, true);
+    // Vibrant terrain surface sitting cleanly on top (seamless tabletop hexes with flush edges)
+    mesh(new THREE.CylinderGeometry(1.0, 1.0, .14, 6), TERRAIN[h.terrain], x, .18, z, root, false, true);
 
     // Keep the front of each tile clear for the number marker.
     if (h.terrain === 'forest') {
       [[-.44,-.2,.72],[0,-.5,.95],[.43,-.2,.65],[.35,.15,.58]].forEach(([dx,dz,s],i) => {
-        box(.07,.3,.07,'#4a5568',x+dx,.35,z+dz);
-        cone(.23,s*.68,i%2 ? '#164e3f' : '#236553',x+dx,.48+s*.2,z+dz,5);
-        cone(.17,s*.55,'#2e7d67',x+dx,.65+s*.2,z+dz,5);
+        box(.07,.3,.07,'#78350f',x+dx,.35,z+dz);
+        cone(.23,s*.68,i%2 ? '#15803d' : '#16a34a',x+dx,.48+s*.2,z+dz,5);
+        cone(.17,s*.55,'#22c55e',x+dx,.65+s*.2,z+dz,5);
       });
     } else if (h.terrain === 'mountains') {
       [[-.32,-.1,.95],[.23,-.28,1.18],[.5,.18,.55]].forEach(([dx,dz,height]) => {
-        cone(height*.39,height,'#5b7083',x+dx,.22+height/2,z+dz,5);
-        cone(height*.13,height*.32,'#f1f5f9',x+dx,.22+height*.85,z+dz,5);
+        cone(height*.39,height,'#64748b',x+dx,.22+height/2,z+dz,5);
+        cone(height*.13,height*.32,'#ffffff',x+dx,.22+height*.85,z+dz,5);
       });
     } else if (h.terrain === 'pasture') {
-      [[-.38,-.23],[.23,-.4],[.4,.07]].forEach(([dx,dz]) => {
-        const wool=sphere(.16,'#f1f5f9',x+dx,.4,z+dz); wool.scale.set(1.3,.8,.85);
-        sphere(.08,'#334155',x+dx+.17,.41,z+dz);
-        [-.08,.08].forEach(leg=>box(.035,.12,.035,'#334155',x+dx+leg,.29,z+dz));
+      // Open, sparse pasture with distinct, high-contrast sheep silhouettes on shaded bases
+      [[-.34, -.25], [.26, -.38], [.34, .09]].forEach(([dx, dz]) => {
+        // Dark contrasting earthen grazing base disk to pop the white sheep silhouette off the pasture
+        mesh(new THREE.CylinderGeometry(.21, .23, .022, 14), '#264332', x + dx, .26, z + dz, root, false, true);
+        // Dark underbelly shadow disk
+        mesh(new THREE.CylinderGeometry(.16, .17, .02, 10), '#1e293b', x + dx, .278, z + dz, root, false, true);
+        // 4 distinct charcoal legs
+        [[-.07, -.05], [-.07, .05], [.07, -.05], [.07, .05]].forEach(([lx, lz]) =>
+          box(.032, .13, .032, '#1e293b', x + dx + lx, .335, z + dz + lz)
+        );
+        // Fluffy white wool body
+        const wool = sphere(.15, '#f8fafc', x + dx, .43, z + dz);
+        wool.scale.set(1.35, .92, .88);
+        // Charcoal black face & ears
+        sphere(.072, '#1e293b', x + dx + .17, .43, z + dz);
+        box(.02, .04, .12, '#334155', x + dx + .16, .47, z + dz);
       });
-      sphere(.13,'#6f9f8c',x-.55,.27,z+.1);
     } else if (h.terrain === 'fields') {
-      for (let r=0;r<4;r++) for(let c=0;c<5;c++) {
-        const dx=-.42+c*.2, dz=-.45+r*.17;
-        box(.024,.2,.025,'#8c7e5a',x+dx,.33,z+dz);
-        const grain=mesh(new THREE.CylinderGeometry(.045,.035,.18,4),'#e2d5a3',x+dx,.47,z+dz); grain.rotation.z=.16;
+      // Dense vertical wheat stalks in organized, parallel agricultural furrow rows
+      for (let r = 0; r < 5; r++) {
+        const dz = -.46 + r * .19;
+        const rowWidth = .84 - Math.abs(r - 2) * .13;
+        // Warm earthen ridge / furrow mound beneath the crop row
+        box(rowWidth, .024, .052, '#8c5918', x, .256, z + dz);
+        for (let c = 0; c < 7; c++) {
+          const dx = (c - 3) * .12;
+          if (Math.abs(dx) <= rowWidth / 2 + .02) {
+            box(.018, .22, .018, '#c47d1a', x + dx, .36, z + dz);
+            const grain = mesh(new THREE.CylinderGeometry(.038, .024, .16, 4), c % 2 === 0 ? '#f3b73e' : '#e5a025', x + dx, .48, z + dz);
+            grain.rotation.z = (c % 2 === 0 ? .12 : -.1);
+          }
+        }
       }
     } else if (h.terrain === 'hills') {
-      [[-.32,-.16,.34],[.18,-.35,.42],[.45,.08,.22]].forEach(([dx,dz,r]) => { const hill=sphere(r,'#8f585d',x+dx,.3,z+dz);hill.scale.y=.7; });
-      for(let i=0;i<4;i++) box(.19,.09,.13,'#a86c71',x-.4+i*.18,.31,z+.12);
+      [[-.32,-.16,.34],[.18,-.35,.42],[.45,.08,.22]].forEach(([dx,dz,r]) => { const hill=sphere(r,'#ea580c',x+dx,.3,z+dz);hill.scale.y=.7; });
+      for(let i=0;i<4;i++) box(.19,.09,.13,'#f97316',x-.4+i*.18,.31,z+.12);
     } else {
-      const dune=sphere(.48,'#c7c2b3',x-.15,.24,z-.13);dune.scale.set(1,.28,.8);
-      box(.07,.34,.07,'#6f857a',x+.4,.39,z-.15);
-      box(.22,.05,.05,'#6f857a',x+.44,.46,z-.15);
+      const dune=sphere(.48,'#fef08a',x-.15,.24,z-.13);dune.scale.set(1,.28,.8);
+      box(.07,.34,.07,'#16a34a',x+.4,.39,z-.15);
+      box(.22,.05,.05,'#16a34a',x+.44,.46,z-.15);
     }
   });
 
@@ -111,21 +134,17 @@ export function makeIsland(board: GameBoard, preview = false) {
 
   function house(x: number, z: number, color: string, city = false, isBurning = false) {
     const g = new THREE.Group(); g.position.set(x, .23, z); g.scale.set(1.4, 1.4, 1.4); root.add(g);
-    // Black base casing outline
-    box(.27, .05, .26, '#000000', 0, .025, 0, g);
-    // Main house body with black line edges
-    const body = box(.25, .23, .24, color, 0, .12, 0, g);
-    body.add(new THREE.LineSegments(new THREE.EdgesGeometry(body.geometry), lineMat));
-    // Cool dark slate roof with black line edges
+    // Main solid wooden house body
+    box(.25, .23, .24, color, 0, .12, 0, g);
+    // Dark slate roof
     const roof = cone(.23, .2, isBurning ? '#451a03' : '#334155', 0, .33, 0, 4, g); roof.rotation.y = Math.PI / 4; roof.scale.z = .83;
-    roof.add(new THREE.LineSegments(new THREE.EdgesGeometry(roof.geometry, 15), lineMat));
-    box(.055, .11, .012, '#000000', 0, .065, .126, g);
+    // Wooden door
+    box(.055, .11, .012, '#3e2723', 0, .065, .126, g);
     if (city) {
-      box(.17, .05, .20, '#000000', -.18, .025, -.02, g);
-      const tower = box(.15, .4, .18, color, -.18, .2, -.02, g);
-      tower.add(new THREE.LineSegments(new THREE.EdgesGeometry(tower.geometry), lineMat));
+      // Solid wooden city tower
+      box(.15, .4, .18, color, -.18, .2, -.02, g);
       const towerRoof = cone(.145, .15, isBurning ? '#451a03' : '#334155', -.18, .47, -.02, 4, g);
-      towerRoof.add(new THREE.LineSegments(new THREE.EdgesGeometry(towerRoof.geometry, 15), lineMat));
+      towerRoof.rotation.y = Math.PI / 4;
     }
 
     // 🔥 ROBBER BURNING EFFECT ON THE HOUSE 🔥
@@ -212,13 +231,9 @@ export function makeIsland(board: GameBoard, preview = false) {
     const dist=a.distanceTo(b);
     const rotY=Math.atan2(b.x-a.x,b.z-a.z);
     const mx=(a.x+b.x)/2, mz=(a.z+b.z)/2;
-    // Black outer casing outline for the road
-    const casing=box(.16,.08,dist*.80,'#000000',mx,.27,mz);
-    casing.rotation.y=rotY;
-    // Colored road body with black line outline
-    const road=box(.13,.09,dist*.78,PIECE_COLORS[e.road.playerColor],mx,.28,mz);
+    // Clean solid wooden road piece
+    const road=box(.15,.10,dist*.82,PIECE_COLORS[e.road.playerColor],mx,.28,mz);
     road.rotation.y=rotY;
-    road.add(new THREE.LineSegments(new THREE.EdgesGeometry(road.geometry), lineMat));
   });
 
   // Check which vertices touch the robber hex
@@ -233,9 +248,9 @@ export function makeIsland(board: GameBoard, preview = false) {
   board.ports.forEach(port=>{
     const p=world(port.pixelX,port.pixelY);const angle=Math.atan2(p.x,p.z);
     const dock=new THREE.Group();dock.position.set(p.x,-.13,p.z);dock.rotation.y=angle;root.add(dock);
-    box(.3,.07,.65,'#94a3b8',0,0,0,dock);
-    for(let i=0;i<5;i++)box(.34,.025,.055,'#cbd5e1',0,.048,-.25+i*.12,dock);
-    [-.12,.12].forEach(dx=>box(.035,.3,.035,'#475569',dx,-.09,.2,dock));
+    box(.3,.07,.65,'#78350f',0,0,0,dock);
+    for(let i=0;i<5;i++)box(.34,.025,.055,'#d97706',0,.048,-.25+i*.12,dock);
+    [-.12,.12].forEach(dx=>box(.035,.3,.035,'#451a03',dx,-.09,.2,dock));
   });
 
   const robber=board.hexes.find(h=>h.id===board.robberHexId);

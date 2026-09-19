@@ -36,21 +36,23 @@ export const TERRAIN_RESOURCES: Record<HexTerrain, Resource | null> = {
   desert: null,
 };
 
+import { TERRAIN_TOKENS, RESOURCE_TOKENS } from './tokens';
+
 export const TERRAIN_COLORS: Record<HexTerrain, { bg: string; stroke: string; label: string }> = {
-  forest: { bg: '#548774', stroke: '#000000', label: 'Forest (Lumber)' },
-  pasture: { bg: '#9ed6be', stroke: '#000000', label: 'Pasture (Wool)' },
-  fields: { bg: '#ded3a6', stroke: '#000000', label: 'Fields (Grain)' },
-  hills: { bg: '#be8888', stroke: '#000000', label: 'Hills (Brick)' },
-  mountains: { bg: '#8ca1b5', stroke: '#000000', label: 'Mountains (Ore)' },
-  desert: { bg: '#dbd8cb', stroke: '#000000', label: 'Desert' },
+  forest: { bg: TERRAIN_TOKENS.forest.color3D, stroke: TERRAIN_TOKENS.forest.shade2D, label: TERRAIN_TOKENS.forest.label },
+  pasture: { bg: TERRAIN_TOKENS.pasture.color3D, stroke: TERRAIN_TOKENS.pasture.shade2D, label: TERRAIN_TOKENS.pasture.label },
+  fields: { bg: TERRAIN_TOKENS.fields.color3D, stroke: TERRAIN_TOKENS.fields.shade2D, label: TERRAIN_TOKENS.fields.label },
+  hills: { bg: TERRAIN_TOKENS.hills.color3D, stroke: TERRAIN_TOKENS.hills.shade2D, label: TERRAIN_TOKENS.hills.label },
+  mountains: { bg: TERRAIN_TOKENS.mountains.color3D, stroke: TERRAIN_TOKENS.mountains.shade2D, label: TERRAIN_TOKENS.mountains.label },
+  desert: { bg: TERRAIN_TOKENS.desert.color3D, stroke: TERRAIN_TOKENS.desert.shade2D, label: TERRAIN_TOKENS.desert.label },
 };
 
 export const RESOURCE_COLORS: Record<Resource, string> = {
-  wood: '#548774',
-  sheep: '#86c2a6',
-  wheat: '#ded3a6',
-  brick: '#be8888',
-  ore: '#8ca1b5',
+  wood: RESOURCE_TOKENS.wood.color,
+  sheep: RESOURCE_TOKENS.sheep.color,
+  wheat: RESOURCE_TOKENS.wheat.color,
+  brick: RESOURCE_TOKENS.brick.color,
+  ore: RESOURCE_TOKENS.ore.color,
 };
 
 // 19 Hex layout definition: row-by-row (3, 4, 5, 4, 3)

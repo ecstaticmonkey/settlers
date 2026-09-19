@@ -1,0 +1,81 @@
+/* Illustrated controls: game objects carry meaning; navy surfaces tie them to
+   the rest of the table. Labels remain available to assistive technology. */
+.game-artwork { display: block; width: 100%; height: 100%; flex: none; }
+.hud-right-column { overflow-x: hidden; }
+.bottom-action-dock { max-width: 560px; gap: 6px; }
+.bottom-action-dock .turn-pill {
+  min-height: 38px; padding: 4px 8px; border-radius: 8px;
+  background: var(--paper); box-shadow: none; border: 1px solid var(--line);
+}
+.bottom-action-dock .turn-pill-active { border-color: var(--grain); }
+.bottom-action-dock .turn-pill-avatar { width: 28px; height: 28px; border: 1px solid #e1eced; }
+.bottom-action-dock .turn-pill-avatar .game-artwork { width: 25px; height: 25px; }
+.bottom-action-dock .turn-pill-title { font-size: 13px; font-weight: 600; }
+.bottom-action-dock .turn-pill-phase { display: none; }
+.bottom-action-dock .turn-pill-timer { margin-left: auto; padding: 4px 4px 4px 12px; color: var(--ink); font-weight: 500; }
+.bottom-action-dock .action-buttons-group {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+.bottom-action-dock .hud-action-btn {
+  width: 100%; min-width: 0; height: 76px; padding: 9px; border-radius: 10px;
+  background: linear-gradient(180deg, #3196b0, #235c85);
+  border: 2px solid #a7d6e4; box-shadow: inset 0 0 0 2px #ffffff13, 0 2px 0 #082239;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.bottom-action-dock .hud-action-btn .game-artwork { width: 52px; height: 52px; max-width: 100%; filter: drop-shadow(0 2px 1px #09243740); }
+.bottom-action-dock .hud-action-btn:hover:not(:disabled) { background: linear-gradient(180deg, #42b0c4, #2d729a); border-color: #f1f8ec; box-shadow: inset 0 0 0 2px #ffffff22; transform: translateY(-2px); }
+.bottom-action-dock .hud-action-btn:disabled { opacity: 1; background: linear-gradient(180deg, #285b71, #25465f); border-color: #638998; cursor: not-allowed; box-shadow: none; }
+.bottom-action-dock .hud-action-btn:disabled .game-artwork { opacity: .5; filter: saturate(.55); }
+.bottom-action-dock .hud-badge { top: 0; right: 0; min-width: 23px; padding: 4px; font-size: 14px; font-weight: 650; color: #f1f7ec; background: #123e61b3; border-radius: 0 7px 0 9px; }
+.bottom-action-dock .hud-btn-selected { background: #287b95; border-color: var(--grain); box-shadow: inset 0 0 0 1px var(--grain); }
+.bottom-action-dock .hud-primary-action:not(:disabled) { background: linear-gradient(180deg, #efd18a, #c39343); border-color: #f9e8b5; }
+.bottom-action-dock .hud-primary-action:hover:not(:disabled) { background: #f0d392; border-color: #fff5d4; }
+.hud-action-btn:focus-visible, .bank-card-pile:focus-visible, .bank-deck-trigger:focus-visible { outline: 3px solid var(--grain); outline-offset: 3px; }
+
+.hud-right-column .bank-deck-bar { order: 1; gap: 4px; padding: 8px 5px; background: var(--paper); box-shadow: none; }
+.bank-deck-bar .bank-deck-trigger { background: transparent; border: 0; box-shadow: none; width: 38px; height: 58px; padding: 0; flex: 0 0 38px; }
+.bank-deck-bar .bank-deck-trigger .game-artwork { width: 38px; height: 44px; }
+.bank-deck-bar .bank-deck-cards { gap: 0; }
+.bank-deck-bar .bank-card-pile { position: relative; height: 58px; padding: 0; background: transparent; border: 0; box-shadow: none; border-radius: 3px; overflow: visible; }
+.bank-deck-bar .bank-card-symbol { position: absolute; inset: 0 -9px; display: block; font-size: inherit; }
+.bank-deck-bar .bank-card-symbol .game-artwork { width: 100%; height: 100%; }
+.bank-deck-bar .bank-card-count { position: absolute; z-index: 1; top: 6px; right: 0; min-width: 19px; padding: 2px 3px; background: #1b4b7e; color: #fff; border-radius: 0 2px 0 7px; font-size: 12px; line-height: 1.1; font-weight: 650; }
+.bank-deck-bar .bank-card-depleted .game-artwork { opacity: .4; }
+.bank-deck-bar .bank-card-pile:hover { transform: translateY(-2px); }
+.bank-deck-bar .bank-card-dev:hover { transform: none; }
+
+.hud-right-column .player-roster-column { order: 2; gap: 6px; }
+.player-roster-column .roster-player-card { display: grid; grid-template-columns: 55px minmax(0, 1fr); grid-template-rows: 19px 54px; gap: 1px 8px; padding: 8px; border-radius: 9px; box-shadow: none; background: var(--surface); }
+.player-roster-column .roster-player-active { border-color: var(--player-accent); box-shadow: inset 3px 0 var(--player-accent); background: #264e71; }
+.player-roster-column .roster-avatar-column { display: flex; grid-column: 1; grid-row: 1 / 3; flex-direction: column; align-items: center; justify-content: center; position: relative; }
+.player-roster-column .roster-avatar-circle { width: 43px; height: 43px; border: 2px solid #dce9e9; box-shadow: inset 0 0 0 2px #12365366; }
+.player-roster-column .roster-avatar-circle .game-artwork { width: 37px; height: 37px; }
+.player-roster-column .roster-vp-ribbon { position: relative; margin-top: -5px; z-index: 1; width: 40px; padding: 1px 5px; border-radius: 2px; border: 1px solid #b4a37c; background: #f4e7c8; color: #374f59; text-align: center; display: block; line-height: 1.1; }
+.player-roster-column .roster-vp-score { font-size: 14px; }
+.player-roster-column .roster-name-row { grid-row: 1; grid-column: 2; min-width: 0; }
+.player-roster-column .roster-player-name { font-size: 12px; font-weight: 600; }
+.player-roster-column .roster-you-badge { font-size: 8px; padding: 1px 3px; border: 0; }
+.player-roster-column .roster-stats-grid { grid-row: 2; grid-column: 2; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; }
+.player-roster-column .roster-stat-badge { position: relative; display: flex; flex-direction: column; gap: 0; justify-content: end; align-items: center; border: 0; border-radius: 0; padding: 0; background: transparent; min-width: 0; }
+.player-roster-column .roster-stat-badge .game-artwork { width: 39px; height: 39px; max-width: 100%; }
+.player-roster-column .roster-badge-resources .game-artwork,
+.player-roster-column .roster-badge-dev .game-artwork { position: absolute; width: 61px; max-width: none; height: 54px; inset: 0; left: 50%; transform: translateX(-50%); }
+.player-roster-column .roster-stat-badge .roster-badge-val { color: #e3edf3; font-size: 14px; font-weight: 500; line-height: 1; }
+.player-roster-column .roster-badge-resources .roster-badge-val,
+.player-roster-column .roster-badge-dev .roster-badge-val { position: absolute; top: 2px; right: 0; min-width: 19px; text-align: center; padding: 3px; background: #1b4b7e; border-radius: 0 2px 0 7px; font-weight: 650; }
+.player-roster-column .roster-special-badge { width: 17px; height: 17px; display: inline-block; }
+.player-roster-column .roster-player-self .roster-avatar-circle { outline: 2px solid #83cce9; outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .bottom-action-dock { max-width: none; flex-basis: 100%; }
+  .bottom-action-dock .hud-action-btn { height: 62px; padding: 6px; }
+  .bottom-action-dock .hud-action-btn .game-artwork { width: 43px; height: 43px; }
+  .bottom-action-dock .hud-badge { font-size: 12px; min-width: 19px; padding: 3px; }
+  .hud-right-column .player-roster-column { grid-template-columns: minmax(0, 1fr); }
+  .bank-deck-bar .bank-card-symbol { inset-inline: -4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-action-dock .hud-action-btn { transition: none; }
+  .bottom-action-dock .hud-action-btn .game-artwork { animation: none; }
+}

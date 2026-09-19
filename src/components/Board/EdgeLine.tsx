@@ -10,13 +10,9 @@ interface EdgeLineProps {
   hoverColor?: PlayerColor;
 }
 
-const COLOR_MAP: Record<PlayerColor, { fill: string; stroke: string }> = {
-  red: { fill: '#881337', stroke: '#000000' },
-  blue: { fill: '#1e3a8a', stroke: '#000000' },
-  orange: { fill: '#7c2d12', stroke: '#000000' },
-  white: { fill: '#e2e8f0', stroke: '#000000' },
-  green: { fill: '#064e3b', stroke: '#000000' },
-};
+import { PLAYER_TOKENS } from '@/lib/catan/tokens';
+
+const COLOR_MAP: Record<PlayerColor, { fill: string; stroke: string }> = PLAYER_TOKENS;
 
 export const EdgeLine: React.FC<EdgeLineProps> = ({
   edge,
@@ -30,8 +26,17 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
   return (
     <g
       className={`transition-all duration-150 ${
-        isValidPlacement ? 'cursor-pointer group' : ''
+        isValidPlacement ? 'flat-placement group' : ''
       }`}
+      role={isValidPlacement ? 'button' : undefined}
+      tabIndex={isValidPlacement ? 0 : undefined}
+      aria-label={isValidPlacement ? `Place road on path ${edge.id + 1}` : undefined}
+      onKeyDown={(event) => {
+        if (isValidPlacement && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onSelectEdge?.(edge.id);
+        }
+      }}
       onClick={() => {
         if (isValidPlacement && onSelectEdge) {
           onSelectEdge(edge.id);
@@ -51,18 +56,12 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
         />
       )}
 
-      {/* If road is built */}
+      {/* If road is built: clean solid wooden road bar */}
       {isOccupied && road && (
-        <g filter="drop-shadow(0 2px 2px rgba(0,0,0,0.45))">
-          {/* Black outer outline */}
+        <g filter="drop-shadow(0 2px 1px rgba(0,0,0,0.25))">
           <line
-            x1={edge.pixelX1}
-            y1={edge.pixelY1}
-            x2={edge.pixelX2}
-            y2={edge.pixelY2}
-            stroke="#000000"
-            strokeWidth="11"
-            strokeLinecap="round"
+            x1={edge.pixelX1} y1={edge.pixelY1} x2={edge.pixelX2} y2={edge.pixelY2}
+            stroke={COLOR_MAP[road.playerColor].stroke} strokeWidth="10" strokeLinecap="round"
           />
           {/* Main road body */}
           <line
@@ -81,9 +80,9 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
             x2={edge.pixelX2}
             y2={edge.pixelY2}
             stroke="#ffffff"
-            strokeWidth="1.2"
+            strokeWidth="1.5"
             strokeLinecap="round"
-            opacity="0.35"
+            opacity="0.25"
           />
         </g>
       )}
@@ -100,7 +99,7 @@ export const EdgeLine: React.FC<EdgeLineProps> = ({
             strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray="6 4"
-            className="opacity-40 group-hover:opacity-100 group-hover:stroke-width-[8px] transition-all animate-pulse"
+            className="flat-road-ghost opacity-60 group-hover:opacity-100 transition-all"
           />
         </>
       )}

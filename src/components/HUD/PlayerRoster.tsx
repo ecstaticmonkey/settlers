@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bot, Layers, Trophy, Home, Route } from 'lucide-react';
+import { GameArtwork } from '../UI/GameArtwork';
 import { Player } from '@/lib/catan/types';
 import { PIECE_COLORS } from '../Board/island-scene';
 
@@ -37,25 +37,26 @@ export function PlayerRoster({
         return (
           <div
             key={p.id}
-            className={`roster-player-card ${isActive ? 'roster-player-active' : ''}`}
+            className={`roster-player-card ${isActive ? 'roster-player-active' : ''} ${isCurrent ? 'roster-player-self' : ''}`}
             style={{ '--player-accent': playerColor } as React.CSSProperties}
           >
             {/* Left: Avatar & Victory Points Ribbon */}
             <div className="roster-avatar-column">
               <div
                 className="roster-avatar-circle"
-                style={{ backgroundColor: playerColor }}
+                style={{ backgroundColor: playerColor, color: p.color === 'white' ? 'var(--paper)' : 'var(--ink)' }}
                 aria-hidden="true"
               >
-                {p.isBot ? <Bot size={18} /> : p.name[0]}
+                <GameArtwork kind="pawn" />
               </div>
-              <div className="roster-vp-ribbon" title={`${points} Victory Points`}>
+              <div className="roster-vp-ribbon" title={`${points} Victory Points`} aria-label={`${points} Victory Points`}>
                 <span className="roster-vp-score">{points}</span>
-                <Trophy size={10} className="roster-vp-trophy" />
+
+                <span className="sr-only">victory points</span>
               </div>
             </div>
 
-            {/* Right: Player Name & Inventory Stats Badges (Cards, Dev, Settlements, Roads) */}
+            {/* Player name, cards, knights played, and longest route. */}
             <div className="roster-player-details">
               <div className="roster-name-row">
                 <span className="roster-player-name">{p.name.replace(' (Bot)', '')}</span>
@@ -63,12 +64,12 @@ export function PlayerRoster({
                 {isActive && <span className="roster-turn-dot" title="Active turn" />}
                 {longestRoadOwnerId === p.id && (
                   <span className="roster-special-badge" title="Longest Road">
-                    🛣️
+                    <GameArtwork kind="longest-road" />
                   </span>
                 )}
                 {largestArmyOwnerId === p.id && (
                   <span className="roster-special-badge" title="Largest Army">
-                    🛡️
+                    <GameArtwork kind="army" />
                   </span>
                 )}
               </div>
@@ -79,8 +80,9 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-resources"
                   title={`${totalResources} resource cards in hand`}
                 >
-                  <span className="roster-badge-icon" style={{ fontWeight: 800, fontSize: '11px' }}>?</span>
+                  <GameArtwork kind="hidden-card" />
                   <span className="roster-badge-val">{totalResources}</span>
+                  <span className="roster-stat-label sr-only">Hand</span>
                 </div>
 
                 {/* Dev Cards Badge */}
@@ -88,26 +90,29 @@ export function PlayerRoster({
                   className="roster-stat-badge roster-badge-dev"
                   title={`${totalDevCards} development cards held`}
                 >
-                  <Layers size={13} className="roster-badge-icon" />
+                  <GameArtwork kind="development" />
                   <span className="roster-badge-val">{totalDevCards}</span>
+                  <span className="roster-stat-label sr-only">Dev cards</span>
                 </div>
 
-                {/* Settlements Remaining Badge */}
+                {/* Played knights count toward Largest Army. */}
                 <div
-                  className="roster-stat-badge roster-badge-settlements"
-                  title={`${p.settlementsLeft} settlements remaining in stock`}
+                  className="roster-stat-badge roster-badge-army"
+                  title={`${p.playedKnights} knights played`}
                 >
-                  <Home size={13} className="roster-badge-icon" />
-                  <span className="roster-badge-val">{p.settlementsLeft}</span>
+                  <GameArtwork kind="army" />
+                  <span className="roster-badge-val">{p.playedKnights}</span>
+                  <span className="roster-stat-label sr-only">Knights played</span>
                 </div>
 
-                {/* Roads Remaining Badge */}
+                {/* Longest connected route, not remaining road stock. */}
                 <div
                   className="roster-stat-badge roster-badge-roads"
-                  title={`${p.roadsLeft} roads remaining in stock`}
+                  title={`${p.longestRoadLength} roads in longest route`}
                 >
-                  <Route size={13} className="roster-badge-icon" />
-                  <span className="roster-badge-val">{p.roadsLeft}</span>
+                  <GameArtwork kind="longest-road" />
+                  <span className="roster-badge-val">{p.longestRoadLength}</span>
+                  <span className="roster-stat-label sr-only">Longest road</span>
                 </div>
               </div>
             </div>

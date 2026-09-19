@@ -3,7 +3,7 @@
 import React from 'react';
 import { GamePhase, Player } from '@/lib/catan/types';
 import { canAfford, BUILDING_COSTS } from '@/lib/catan/engine';
-import { Dices, Home, Castle, Route, Layers, ArrowLeftRight, ArrowRight, Hourglass, MapPin } from 'lucide-react';
+import { GameArtwork } from '../UI/GameArtwork';
 import { PIECE_COLORS } from '../Board/island-scene';
 
 interface Props {
@@ -87,7 +87,7 @@ export function ActionBar({
           style={{ backgroundColor: PIECE_COLORS[activePlayer.color] }}
           aria-hidden="true"
         >
-          {phase === 'TURN_ROLL' ? <Dices size={15} /> : activePlayer.isBot ? '🤖' : activePlayer.name[0]}
+          <GameArtwork kind="pawn" />
         </div>
         <div className="turn-pill-info">
           <span className="turn-pill-title">{turnStatus}</span>
@@ -107,12 +107,12 @@ export function ActionBar({
           type="button"
           className="hud-action-btn"
           onClick={onOpenTradeModal}
-          disabled={setup || rolling}
-          title="Trade with players"
+          disabled={rolling}
+          title="Trade with players / bank"
           aria-label="Trade with players"
         >
-          <ArrowLeftRight size={20} />
-          <span className="hud-action-label">Trade</span>
+          <GameArtwork kind="trade" />
+          <span className="hud-action-label sr-only">Trade</span>
         </button>
 
         {/* Development Cards Button */}
@@ -124,11 +124,11 @@ export function ActionBar({
           title="Development cards (Play or Buy)"
           aria-label="Development cards"
         >
-          <Layers size={20} />
-          <span className="hud-action-label">Cards</span>
+          <GameArtwork kind="development" />
+          <span className="hud-action-label sr-only">Cards</span>
         </button>
 
-        <div className="hud-action-separator" aria-hidden="true" />
+
 
         {/* Road Build Button */}
         {(() => {
@@ -139,14 +139,15 @@ export function ActionBar({
             <button
               type="button"
               className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              aria-pressed={isSelected}
               disabled={!actions || !affordable || supply <= 0}
               title={`Road (${costs.road})${!affordable ? ' — Needs resources' : ''}`}
               onClick={() => onSetBuildMode(isSelected ? null : 'road')}
               aria-label={`Build road (${supply} left)`}
             >
               <span className="hud-badge">{freeRoadsRemaining > 0 ? `${freeRoadsRemaining}*` : supply}</span>
-              <Route size={20} />
-              <span className="hud-action-label">Road</span>
+              <GameArtwork kind="road" />
+              <span className="hud-action-label sr-only">Road</span>
             </button>
           );
         })()}
@@ -160,14 +161,15 @@ export function ActionBar({
             <button
               type="button"
               className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              aria-pressed={isSelected}
               disabled={!actions || !affordable || supply <= 0}
               title={`Settlement (${costs.settlement})${!affordable ? ' — Needs resources' : ''}`}
               onClick={() => onSetBuildMode(isSelected ? null : 'settlement')}
               aria-label={`Build settlement (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Home size={20} />
-              <span className="hud-action-label">Settle</span>
+              <GameArtwork kind="settlement" />
+              <span className="hud-action-label sr-only">Settle</span>
             </button>
           );
         })()}
@@ -181,14 +183,15 @@ export function ActionBar({
             <button
               type="button"
               className={`hud-action-btn hud-build-btn ${isSelected ? 'hud-btn-selected' : ''}`}
+              aria-pressed={isSelected}
               disabled={!actions || !affordable || supply <= 0}
               title={`City (${costs.city})${!affordable ? ' — Needs resources' : ''}`}
               onClick={() => onSetBuildMode(isSelected ? null : 'city')}
               aria-label={`Build city (${supply} left)`}
             >
               <span className="hud-badge">{supply}</span>
-              <Castle size={20} />
-              <span className="hud-action-label">City</span>
+              <GameArtwork kind="city" />
+              <span className="hud-action-label sr-only">City</span>
             </button>
           );
         })()}
@@ -203,8 +206,8 @@ export function ActionBar({
             title="Roll the dice"
             aria-label="Roll dice"
           >
-            <Dices size={20} className={rolling ? 'animate-spin' : ''} />
-            <span className="hud-action-label">{rolling ? 'Rolling…' : 'Roll'}</span>
+            <GameArtwork kind="dice" className={rolling ? 'animate-pulse' : ''} />
+            <span className="hud-action-label sr-only">{rolling ? 'Rolling…' : 'Roll'}</span>
           </button>
         ) : actions ? (
           <button
@@ -217,8 +220,8 @@ export function ActionBar({
             title="End your turn"
             aria-label="End turn"
           >
-            <ArrowRight size={20} />
-            <span className="hud-action-label">Pass</span>
+            <GameArtwork kind="hourglass" />
+            <span className="hud-action-label sr-only">Pass</span>
           </button>
         ) : setup && isMyTurn ? (
           <button
@@ -226,9 +229,10 @@ export function ActionBar({
             className="hud-action-btn hud-primary-action"
             title={`Click on a glowing spot on the island to place your ${setupRoad ? 'road' : 'settlement'}`}
             aria-label="Place on board"
+            onClick={() => document.querySelector<HTMLElement | SVGElement>('.catan-board-viewport [aria-label^="Place settlement"], .catan-board-viewport [aria-label^="Place road"]')?.focus()}
           >
-            <MapPin size={20} className="animate-bounce" />
-            <span className="hud-action-label">Place</span>
+            <GameArtwork kind={setupRoad ? 'road' : 'settlement'} />
+            <span className="hud-action-label sr-only">Place</span>
           </button>
         ) : (
           <button
@@ -238,8 +242,8 @@ export function ActionBar({
             title={rolling ? 'Rolling the dice…' : setup ? 'Setup in progress' : 'Waiting for player'}
             aria-label="Waiting"
           >
-            <Hourglass size={20} className={isMyTurn ? 'animate-pulse' : ''} />
-            <span className="hud-action-label">Wait</span>
+            <GameArtwork kind="hourglass" />
+            <span className="hud-action-label sr-only">Wait</span>
           </button>
         )}
       </div>

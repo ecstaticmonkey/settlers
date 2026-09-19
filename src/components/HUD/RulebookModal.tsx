@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Dialog } from '../UI/Dialog';
-import { Trophy, Dices, Layers, Shield, Anchor, ArrowLeftRight } from 'lucide-react';
+import { Trophy, Dices, Layers, Anchor } from 'lucide-react';
 
 interface RulebookModalProps {
   isOpen: boolean;
@@ -15,6 +15,17 @@ export const RulebookModal: React.FC<RulebookModalProps> = ({ isOpen, onClose })
   return (
     <Dialog title="Settlers Rulebook" onClose={onClose}>
       <div className="rulebook-content">
+        <section className="rulebook-section" aria-label="Resource legend">
+          <h3><Layers size={16} /> Resource guide</h3>
+          <dl className="resource-legend">
+            <div><dt>Forest</dt><dd>Wood</dd></div>
+            <div><dt>Hills</dt><dd>Brick</dd></div>
+            <div><dt>Fields</dt><dd>Wheat</dd></div>
+            <div><dt>Pasture</dt><dd>Sheep</dd></div>
+            <div><dt>Mountains</dt><dd>Ore</dd></div>
+          </dl>
+          <p>The desert produces no resources. Hand counts show cards you own; bank counts show cards available. Player stats show resource cards held, development cards held, and unbuilt settlements (homes) and roads remaining.</p>
+        </section>
         <section className="rulebook-section">
           <h3>
             <Trophy size={16} /> Objective

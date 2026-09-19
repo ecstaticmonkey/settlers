@@ -12,6 +12,7 @@ import { NumberToken, RobberPawn } from './NumberToken';
 import { EdgeLine } from './EdgeLine';
 import { VertexNode } from './VertexNode';
 import { PortMarker } from './PortMarker';
+import './flat-board.css';
 
 interface CatanBoardProps {
   board: GameBoard;
@@ -122,36 +123,40 @@ export const FlatBoard: React.FC<CatanBoardProps> = ({
   const isRobberMoving = isMyTurn && phase === 'TURN_ROBBER_MOVE';
   const robberHex = board.hexes.find((h) => h.id === board.robberHexId);
 
+  const coastline = React.useMemo(() => {
+    const remaining = new Set(board.edges.filter(edge => edge.adjacentHexIds.length === 1));
+    const first = remaining.values().next().value;
+    if (!first) return '';
+    const start = board.vertices[first.v1];
+    let vertexId = first.v1;
+    let path = `M${start.pixelX} ${start.pixelY}`;
+    while (remaining.size) {
+      const next = [...remaining].find(edge => edge.v1 === vertexId || edge.v2 === vertexId);
+      if (!next) break;
+      remaining.delete(next);
+      vertexId = next.v1 === vertexId ? next.v2 : next.v1;
+      const vertex = board.vertices[vertexId];
+      path += `L${vertex.pixelX} ${vertex.pixelY}`;
+    }
+    return `${path}Z`;
+  }, [board.edges, board.vertices]);
+
   return (
-    <div className="relative w-full max-w-4xl mx-auto flex items-center justify-center p-2 select-none">
+    <div className="flat-board-container select-none">
       <svg
-        viewBox="180 80 540 640"
-        className="w-full h-auto max-h-[82vh] drop-shadow-2xl overflow-visible"
-        style={{ filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.45))' }}
+        viewBox="110 65 680 660"
+        className="flat-board-svg"
+        role="group"
+        aria-label="Top-down Catan island board"
       >
-        <defs>
-          {/* Oceanic background gradient */}
-          <radialGradient id="oceanGradient" cx="50%" cy="50%" r="65%">
-            <stop offset="0%" stopColor="#142c48" />
-            <stop offset="60%" stopColor="#0a1728" />
-            <stop offset="100%" stopColor="#040912" />
-          </radialGradient>
-
-          {/* Water wave ripple effect pattern */}
-          <pattern id="waves" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path
-              d="M 0 20 Q 10 15, 20 20 T 40 20"
-              fill="none"
-              stroke="#60a5fa"
-              strokeWidth="0.8"
-              opacity="0.14"
-            />
-          </pattern>
-        </defs>
-
-        {/* Ocean Background & Boundary Circle */}
-        <circle cx="450" cy="400" r="320" fill="url(#oceanGradient)" stroke="#0f172a" strokeWidth="6" />
-        <circle cx="450" cy="400" r="320" fill="url(#waves)" />
+        <title>The island · top-down view</title>
+        {/* Connected coastal outline follows the actual playable island. */}
+        <g fill="var(--flat-sand)" strokeLinejoin="round" pointerEvents="none">
+          <path d={coastline} stroke="#4aa7bb" strokeWidth="32" strokeOpacity=".24" />
+          <path d={coastline} stroke="#6dbdc6" strokeWidth="24" strokeOpacity=".6" />
+          <path d={coastline} stroke="#bee3dc" strokeWidth="17" />
+          <path d={coastline} stroke="var(--flat-sand-light)" strokeWidth="11" />
+        </g>
 
         {/* 1. Hexagons Layer */}
         <g id="hexes-layer">
@@ -159,7 +164,7 @@ export const FlatBoard: React.FC<CatanBoardProps> = ({
             <Hexagon
               key={`hex-${hex.id}`}
               hex={hex}
-              isRobberMoveTarget={isRobberMoving && hex.id !== board.robberHexId && hex.terrain !== 'desert'}
+              isRobberMoveTarget={isRobberMoving && hex.id !== board.robberHexId}
               onSelectHex={onSelectHex}
             />
           ))}

@@ -11,13 +11,12 @@ import { ActionBar } from '../HUD/ActionBar';
 import { BankDeckBar } from '../HUD/BankDeckBar';
 import { GameLog } from '../HUD/GameLog';
 import { TradeModal } from '../HUD/TradeModal';
-import { BankTradeModal } from '../HUD/BankTradeModal';
 import { DevCardModal } from '../HUD/DevCardModal';
 import { RobberModal } from '../HUD/RobberModal';
 import { VictoryModal } from '../HUD/VictoryModal';
 import { RulebookModal } from '../HUD/RulebookModal';
 import { SettingsModal } from '../HUD/SettingsModal';
-import { Settings, BookOpen, Maximize2, Info, X } from 'lucide-react';
+import { Settings, BookOpen, Maximize2, Info, X, Layers, Box } from 'lucide-react';
 
 import dynamic from 'next/dynamic';
 const DiceTray = dynamic(() => import('../HUD/DiceTray'), { ssr: false });
@@ -49,10 +48,26 @@ export const GameView: React.FC<GameViewProps> = ({
 
   // Modals state
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+  const [tradeModalTab, setTradeModalTab] = useState<'player' | 'bank'>('player');
   const [isDevCardModalOpen, setIsDevCardModalOpen] = useState(false);
   const [isRulebookOpen, setIsRulebookOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('catan_view_mode');
+      if (saved === '2d' || saved === '3d') setViewMode(saved);
+    } catch {}
+  }, []);
+
+  const handleToggleViewMode = () => {
+    setViewMode((prev) => {
+      const next = prev === '3d' ? '2d' : '3d';
+      try { localStorage.setItem('catan_view_mode', next); } catch {}
+      return next;
+    });
+  };
 
   const [pingMs, setPingMs] = useState(roomService.getPing());
   const lastRobberHexId = useRef(initialState.board.robberHexId);
@@ -257,11 +272,22 @@ export const GameView: React.FC<GameViewProps> = ({
           onSelectVertex={handleSelectVertex}
           onSelectEdge={handleSelectEdge}
           onSelectHex={handleSelectHex}
+          viewMode={viewMode}
+          onToggleViewMode={handleToggleViewMode}
         />
       </div>
 
       {/* TOP-LEFT: Floating Utility Toolbar (Settings, Rules, Fullscreen, Info, Ping) */}
       <div className="hud-top-left-toolbar" role="toolbar" aria-label="Quick tools">
+        <button
+          type="button"
+          className={`hud-tool-btn ${viewMode === '2d' ? 'hud-tool-btn-active' : ''}`}
+          onClick={handleToggleViewMode}
+          title={viewMode === '3d' ? 'Switch to 2D Top-Down View (Colonist-style)' : 'Switch to 3D Island View'}
+          aria-label="Toggle 2D / 3D board view"
+        >
+          {viewMode === '3d' ? <Layers size={17} /> : <Box size={17} />}
+        </button>
         <button
           type="button"
           className="hud-tool-btn"
@@ -306,7 +332,7 @@ export const GameView: React.FC<GameViewProps> = ({
       </div>
 
       {/* TOP-CENTER: Floating Objective Ribbon Banner */}
-      <div className="hud-top-ribbon-wrap" pointer-events="none">
+      <div className="hud-top-ribbon-wrap" style={{ pointerEvents: 'none' }}>
         <div className="hud-ribbon-banner">
           <span>To win the game, reach 10 points</span>
           <span className="hud-ribbon-trophy" aria-hidden="true">
@@ -323,7 +349,10 @@ export const GameView: React.FC<GameViewProps> = ({
           bankResources={bankResources}
           devCardsRemaining={gameState.devCardDeck?.length ?? 25}
           canTrade={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
-          onOpenBankTrade={() => setIsBankModalOpen(true)}
+          onOpenBankTrade={() => {
+            setTradeModalTab('bank');
+            setIsTradeModalOpen(true);
+          }}
         />
 
         <PlayerRoster
@@ -337,11 +366,15 @@ export const GameView: React.FC<GameViewProps> = ({
         />
       </div>
 
-      {/* BOTTOM DOCK: Resource Hand Tray (Left) + Turn Pill & Actions Group (Right) */}
+      {/* BOTTOM DOCK: Resource Hand Tray (Left) + Turn Pill & Actions Group (Center) + Dice Tray (Right) */}
       <div className="hud-bottom-dock">
         <ResourceHand
           resources={me.resources}
-          onOpenBankTrade={() => setIsBankModalOpen(true)}
+          onOpenGuide={() => setIsRulebookOpen(true)}
+          onOpenBankTrade={() => {
+            setTradeModalTab('bank');
+            setIsTradeModalOpen(true);
+          }}
           canTrade={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
         />
 
@@ -355,34 +388,40 @@ export const GameView: React.FC<GameViewProps> = ({
           onSetBuildMode={setBuildMode}
           onRollDice={handleRollDice}
           onBuyDevCard={() => handleDispatch({ type: 'BUY_DEV_CARD' })}
-          onOpenTradeModal={() => setIsTradeModalOpen(true)}
+          onOpenTradeModal={() => {
+            setTradeModalTab('player');
+            setIsTradeModalOpen(true);
+          }}
           onOpenDevCardModal={() => setIsDevCardModalOpen(true)}
           onEndTurn={() => handleDispatch({ type: 'END_TURN' })}
           freeRoadsRemaining={gameState.freeRoadsRemaining}
           turnTimeRemainingSeconds={remainingSeconds}
         />
-      </div>
 
-      {/* 3D Dice Tray (Positioned neatly in top-left below utility tools) */}
-      {!setup && (
-        <div className="hud-dice-tray-host">
-          <DiceTray
-            dice={gameState.dice}
-            turn={gameState.turnNumber}
-            canRoll={isMyTurn && gameState.phase === 'TURN_ROLL' && !rollPending}
-            playerName={activePlayer.name.replace(' (Bot)', '')}
-            onRoll={handleRollDice}
-            onRollingChange={setIsRolling}
-          />
-        </div>
-      )}
+        {/* 3D Dice Tray (Positioned neatly in the bottom dock on the right) */}
+        {!setup && (
+          <div className="hud-dice-tray-host">
+            <DiceTray
+              dice={gameState.dice}
+              turn={gameState.turnNumber}
+              canRoll={isMyTurn && gameState.phase === 'TURN_ROLL' && !rollPending}
+              playerName={activePlayer.name.replace(' (Bot)', '')}
+              onRoll={handleRollDice}
+              onRollingChange={setIsRolling}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Incoming Trade Offer Alert Banner */}
       {gameState.activeTradeOffer && gameState.activeTradeOffer.fromPlayerId !== me.id && (
         <button
           type="button"
           className="hud-trade-alert-pill"
-          onClick={() => setIsTradeModalOpen(true)}
+          onClick={() => {
+            setTradeModalTab('player');
+            setIsTradeModalOpen(true);
+          }}
         >
           A settler has offered a trade. View offer →
         </button>
@@ -402,6 +441,7 @@ export const GameView: React.FC<GameViewProps> = ({
       <TradeModal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
+        initialTab={tradeModalTab}
         currentPlayer={me}
         players={gameState.players}
         activeOffer={gameState.activeTradeOffer}
@@ -409,15 +449,11 @@ export const GameView: React.FC<GameViewProps> = ({
         onRespondOffer={(accept) => handleDispatch({ type: 'RESPOND_TRADE_OFFER', accept, playerId: me.id })}
         onConfirmTrade={(targetPlayerId) => handleDispatch({ type: 'CONFIRM_TRADE_OFFER', targetPlayerId })}
         onCancelOffer={() => handleDispatch({ type: 'CANCEL_TRADE_OFFER' })}
-      />
-
-      <BankTradeModal
-        isOpen={isBankModalOpen}
-        onClose={() => setIsBankModalOpen(false)}
-        player={me}
-        onExecuteTrade={(give, get, count) =>
+        onExecuteBankTrade={(give, get, count) =>
           handleDispatch({ type: 'BANK_TRADE', giveResource: give, getResource: get, count })
         }
+        canOffer={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
+        canTrade={isMyTurn && !isRolling && gameState.phase === 'TURN_ACTIONS'}
       />
 
       <DevCardModal

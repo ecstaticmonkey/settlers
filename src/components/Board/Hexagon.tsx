@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Hex, HexTerrain } from '@/lib/catan/types';
+import { Hex } from '@/lib/catan/types';
 import { TERRAIN_COLORS } from '@/lib/catan/board';
+import { FLAT_TERRAIN, TerrainIllustration, tilePoints } from './FlatBoardArt';
 
 interface HexagonProps {
   hex: Hex;
@@ -10,120 +11,50 @@ interface HexagonProps {
   onSelectHex?: (hexId: number) => void;
 }
 
-export const Hexagon: React.FC<HexagonProps> = ({
-  hex,
-  isRobberMoveTarget,
-  onSelectHex,
-}) => {
-  const pointsString = React.useMemo(() => {
-    // Generate the 6 corner points for SVG polygon with a slight inset for spacing
-    const corners: string[] = [];
-    for (let i = 0; i < 6; i++) {
-      const angleRad = (Math.PI / 180) * (60 * i + 30);
-      const x = hex.pixelX + 56.5 * Math.cos(angleRad);
-      const y = hex.pixelY + 56.5 * Math.sin(angleRad);
-      corners.push(`${x},${y}`);
-    }
-    return corners.join(' ');
-  }, [hex.pixelX, hex.pixelY]);
-
-  const terrainConfig = TERRAIN_COLORS[hex.terrain];
-
-  // Render thematic terrain backdrop icon/pattern
-  const renderTerrainIcon = () => {
-    const cx = hex.pixelX;
-    const cy = hex.pixelY - 14;
-
-    switch (hex.terrain) {
-      case 'forest':
-        return (
-          <g opacity="0.35" fill="#13382c">
-            <polygon points={`${cx},${cy - 12} ${cx - 9},${cy + 4} ${cx + 9},${cy + 4}`} />
-            <polygon points={`${cx},${cy - 6} ${cx - 12},${cy + 12} ${cx + 12},${cy + 12}`} />
-            <rect x={cx - 2} y={cy + 12} width="4" height="6" fill="#0b241c" />
-          </g>
-        );
-      case 'hills':
-        return (
-          <g opacity="0.4" fill="#4a2930">
-            <path d={`M ${cx - 18} ${cy + 14} Q ${cx - 8} ${cy - 8} ${cx + 2} ${cy + 14} Z`} />
-            <path d={`M ${cx - 4} ${cy + 14} Q ${cx + 8} ${cy - 4} ${cx + 18} ${cy + 14} Z`} />
-          </g>
-        );
-      case 'fields':
-        return (
-          <g opacity="0.4" stroke="#9e8e63" strokeWidth="2" strokeLinecap="round">
-            <line x1={cx - 10} y1={cy + 12} x2={cx} y2={cy - 8} />
-            <line x1={cx} y1={cy - 8} x2={cx - 6} y2={cy - 12} />
-            <line x1={cx} y1={cy - 8} x2={cx + 6} y2={cy - 12} />
-            <line x1={cx + 10} y1={cy + 12} x2={cx} y2={cy - 8} />
-          </g>
-        );
-      case 'pasture':
-        return (
-          <g opacity="0.35" fill="#285848">
-            {/* Gentle grass tufts */}
-            <path d={`M ${cx - 12} ${cy + 10} Q ${cx - 6} ${cy} ${cx} ${cy + 10} Z`} />
-            <path d={`M ${cx} ${cy + 10} Q ${cx + 6} ${cy + 2} ${cx + 12} ${cy + 10} Z`} />
-          </g>
-        );
-      case 'mountains':
-        return (
-          <g opacity="0.4" fill="#263238">
-            <polygon points={`${cx - 14},${cy + 14} ${cx - 2},${cy - 12} ${cx + 10},${cy + 14}`} />
-            <polygon points={`${cx - 2},${cy - 12} ${cx + 2},${cy - 4} ${cx - 6},${cy - 4}`} fill="#f1f5f9" />
-            <polygon points={`${cx},${cy + 14} ${cx + 12},${cy - 6} ${cx + 20},${cy + 14}`} fill="#475569" />
-          </g>
-        );
-      case 'desert':
-        return (
-          <g opacity="0.4" fill="#78716c">
-            <ellipse cx={cx} cy={cy + 8} rx="16" ry="6" />
-          </g>
-        );
-      default:
-        return null;
-    }
-  };
+export const Hexagon: React.FC<HexagonProps> = ({ hex, isRobberMoveTarget, onSelectHex }) => {
+  const { pixelX: x, pixelY: y, terrain } = hex;
+  const palette = FLAT_TERRAIN[terrain];
+  const select = () => { if (isRobberMoveTarget) onSelectHex?.(hex.id); };
 
   return (
-    <g
-      className={`transition-all duration-200 ${
-        isRobberMoveTarget ? 'cursor-pointer hover:brightness-125' : ''
-      }`}
-      onClick={() => {
-        if (isRobberMoveTarget && onSelectHex) {
-          onSelectHex(hex.id);
+    <g className={`flat-hex ${isRobberMoveTarget ? 'flat-hex-target' : ''}`}
+      role={isRobberMoveTarget ? 'button' : undefined}
+      tabIndex={isRobberMoveTarget ? 0 : undefined}
+      aria-label={`${TERRAIN_COLORS[terrain].label}${hex.numberToken ? `, ${hex.numberToken}` : ''}${isRobberMoveTarget ? '. Move robber here' : ''}`}
+      onClick={select}
+      onKeyDown={event => {
+        if (isRobberMoveTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault(); select();
         }
-      }}
-    >
-      {/* Hex background with black outline and spacing */}
-      <polygon
-        points={pointsString}
-        fill={terrainConfig.bg}
-        stroke={isRobberMoveTarget ? '#38bdf8' : '#000000'}
-        strokeWidth={isRobberMoveTarget ? 3.5 : 2.5}
-        strokeLinejoin="round"
-        className="transition-colors drop-shadow-sm"
-      />
-
-      {/* Thematic icon */}
-      {renderTerrainIcon()}
-
-      {/* Robber Move Target Highlight indicator */}
-      {isRobberMoveTarget && (
-        <circle
-          cx={hex.pixelX}
-          cy={hex.pixelY}
-          r="26"
-          fill="none"
-          stroke="#38bdf8"
-          strokeWidth="3"
-          strokeDasharray="4 4"
-          className="animate-spin"
-          style={{ transformOrigin: `${hex.pixelX}px ${hex.pixelY}px`, animationDuration: '6s' }}
-        />
+      }}>
+      <title>{TERRAIN_COLORS[terrain].label}{hex.numberToken ? ` · ${hex.numberToken}` : ''}</title>
+      <polygon points={tilePoints(x, y, 59.6)} fill="var(--flat-sand)" stroke="var(--flat-sand-edge)" strokeWidth="1.2" />
+      <polygon points={tilePoints(x, y, 55.5)} fill={palette.shade} stroke="var(--flat-sand-light)" strokeWidth="1.5" />
+      <polygon points={tilePoints(x, y - 1, 51.5)} fill={palette.fill} />
+      <path d={`M${x - 44.6} ${y + 24.7}V${y - 26.7}L${x} ${y - 52.5}L${x + 44.6} ${y - 26.7}`}
+        fill="none" stroke="#fff4cb" strokeOpacity=".3" strokeWidth="1.5" />
+      <g transform={`translate(${x}, ${y - (terrain === 'desert' ? 0 : 21)}) scale(.7)`} pointerEvents="none">
+        <ellipse cy="19" rx="23" ry="3" fill={palette.ink} opacity=".12" />
+        <TerrainIllustration terrain={terrain} />
+      </g>
+      {terrain === 'fields' ? (
+        <g stroke={palette.ink} strokeWidth="1.2" strokeDasharray="3.5 3.5" opacity=".32" fill="none" pointerEvents="none">
+          <path d={`M${x - 34} ${y - 16} Q${x} ${y - 11} ${x + 34} ${y - 16}`} />
+          <path d={`M${x - 40} ${y + 2} Q${x} ${y + 7} ${x + 40} ${y + 2}`} />
+          <path d={`M${x - 34} ${y + 20} Q${x} ${y + 25} ${x + 34} ${y + 20}`} />
+          <path d={`M${x - 24} ${y + 35} Q${x} ${y + 39} ${x + 24} ${y + 35}`} />
+        </g>
+      ) : terrain === 'pasture' ? (
+        <g stroke={palette.ink} strokeWidth="1.1" opacity=".28" fill="none" strokeLinecap="round" pointerEvents="none">
+          <path d={`M${x - 28} ${y + 24}l2-5m-2 5l-2-4M${x + 26} ${y + 22}l2-5m-2 5l-2-4`} />
+        </g>
+      ) : (
+        <g stroke={palette.ink} strokeWidth="1.2" opacity=".27" fill="none" strokeLinecap="round" pointerEvents="none">
+          <path d={`M${x - 34} ${y - 6}l-4-3m4 3v-5m0 5l4-2M${x + 31} ${y - 9}l-3-3m3 3l2-5m-2 5h5`} />
+          <path d={`M${x - 31} ${y + 26}l5-2m49-1l5 2`} />
+        </g>
       )}
+      {isRobberMoveTarget && <polygon className="flat-hex-focus" points={tilePoints(x, y, 54)} fill="none" stroke="var(--sea)" strokeWidth="3" strokeDasharray="5 4" pointerEvents="none" />}
     </g>
   );
 };

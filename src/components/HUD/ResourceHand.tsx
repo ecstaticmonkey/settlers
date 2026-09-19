@@ -9,13 +9,15 @@ interface ResourceHandProps {
   resources: Record<Resource, number>;
   onOpenBankTrade?: () => void;
   canTrade?: boolean;
+  onOpenGuide?: () => void;
 }
 
-export function ResourceHand({ resources }: ResourceHandProps) {
+export function ResourceHand({ resources, onOpenGuide }: ResourceHandProps) {
   const totalCards = Object.values(resources).reduce((a, b) => a + b, 0);
 
   return (
     <div className="resource-hand-tray" role="region" aria-label="Player resource cards hand">
+      <div className="hand-tray-heading"><strong>Your resources</strong><button type="button" onClick={onOpenGuide}>Resource guide</button><span aria-live="polite">{totalCards} cards</span></div>
       <div className="hand-tray-cards">
         {RESOURCE_NAMES.map((r) => {
           const count = resources[r] ?? 0;
@@ -46,9 +48,6 @@ export function ResourceHand({ resources }: ResourceHandProps) {
         })}
       </div>
 
-      <div className="hand-tray-meta" aria-live="polite">
-        <span className="hand-tray-total">{totalCards} cards</span>
-      </div>
     </div>
   );
 }

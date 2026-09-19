@@ -10,7 +10,7 @@ import {
 import dynamic from 'next/dynamic';
 import { FlatBoard } from './FlatBoard';
 import { ResourceIcon } from '../UI/ResourceIcon';
-import { Anchor } from 'lucide-react';
+import { Anchor, Box } from 'lucide-react';
 const IslandCanvas = dynamic(() => import('./IslandCanvas'), { ssr: false, loading: () => <div className="island-loading"><span/>Charting your island…</div> });
 
 interface CatanBoardProps {
@@ -23,6 +23,8 @@ interface CatanBoardProps {
   onSelectVertex: (vertexId: number) => void;
   onSelectEdge: (edgeId: number) => void;
   onSelectHex: (hexId: number) => void;
+  viewMode?: '3d' | '2d';
+  onToggleViewMode?: () => void;
 }
 
 export const CatanBoard: React.FC<CatanBoardProps> = ({
@@ -35,7 +37,34 @@ export const CatanBoard: React.FC<CatanBoardProps> = ({
   onSelectVertex,
   onSelectEdge,
   onSelectHex,
+  viewMode: propViewMode,
+  onToggleViewMode: propToggleViewMode,
 }) => {
+  const [internalViewMode, setInternalViewMode] = React.useState<'3d' | '2d'>('3d');
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('catan_view_mode');
+      if (saved === '2d' || saved === '3d') {
+        setInternalViewMode(saved);
+      }
+    } catch {}
+  }, []);
+
+  const activeView = propViewMode ?? internalViewMode;
+
+  const handleToggleMode = () => {
+    if (propToggleViewMode) {
+      propToggleViewMode();
+    } else {
+      const next = activeView === '3d' ? '2d' : '3d';
+      setInternalViewMode(next);
+      try {
+        localStorage.setItem('catan_view_mode', next);
+      } catch {}
+    }
+  };
+
   const isMyTurn = activePlayer.id === currentPlayerId;
 
   // Compute which vertices are valid for placement
@@ -122,10 +151,41 @@ export const CatanBoard: React.FC<CatanBoardProps> = ({
   const isRobberMoving = isMyTurn && phase === 'TURN_ROBBER_MOVE';
 
 
+  if (activeView === '2d') {
+    return (
+      <div className="flat-board-root">
+        <FlatBoard {...{ board, phase, activePlayer, currentPlayerId, buildMode, lastPlacedVertexId, onSelectVertex, onSelectEdge, onSelectHex }} />
+        <div className="board-camera-bar">
+          <div className="camera-hint">
+            <span>2D Top-Down View</span>
+          </div>
+          <div className="camera-controls" aria-label="Board camera">
+            <button
+              onClick={handleToggleMode}
+              className="camera-mode-btn"
+              title="Switch to 3D Island View"
+              aria-label="Switch to 3D Island View"
+            >
+              <Box size={14} />
+              <span>3D View</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const fallback = <FlatBoard {...{ board, phase, activePlayer, currentPlayerId, buildMode, lastPlacedVertexId, onSelectVertex, onSelectEdge, onSelectHex }} />;
-  return <IslandCanvas board={board} fallback={fallback}>
+  return <IslandCanvas board={board} fallback={fallback} onToggleViewMode={handleToggleMode}>
     {board.hexes.map(hex => <button key={`hex-${hex.id}`} data-world-x={hex.pixelX} data-world-z={hex.pixelY + 20} data-world-y=".27" className={`number-marker ${hex.pips === 5 ? 'number-hot' : ''} ${hex.hasRobber ? 'number-blocked' : ''} ${isRobberMoving && !hex.hasRobber ? 'robber-target' : ''}`} disabled={!isRobberMoving || hex.hasRobber} onPointerDown={(e) => { if (isRobberMoving && !hex.hasRobber) e.stopPropagation(); }} onClick={() => onSelectHex(hex.id)} aria-label={`${hex.terrain}, ${hex.numberToken || 'desert'}${hex.hasRobber ? ', robber' : ''}${isRobberMoving && !hex.hasRobber ? '. Move robber here' : ''}`}>
-      {hex.numberToken || <span className="desert-mark">✦</span>}<span className="number-pips">{'•'.repeat(hex.pips)}</span>
+      <span className="number-val">{hex.numberToken || <span className="desert-mark">✦</span>}</span>
+      {hex.numberToken !== null && (
+        <span className="number-pips" aria-label={`${hex.pips} pips`}>
+          {Array.from({ length: hex.pips }).map((_, i) => (
+            <span key={i} className="pip-dot" />
+          ))}
+        </span>
+      )}
     </button>)}
     {board.ports.map(port => <span key={`port-${port.id}`} className="port-label" data-world-x={port.pixelX} data-world-z={port.pixelY} data-world-y=".05" title={port.label}>{port.resource ? <ResourceIcon resource={port.resource} size={11}/> : <Anchor size={11}/>} {port.ratio}:1</span>)}
     {board.vertices.filter(vertex => validVertexIds.has(vertex.id) || upgradableCityVertexIds.has(vertex.id)).map(vertex => (
